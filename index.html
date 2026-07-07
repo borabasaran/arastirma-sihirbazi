@@ -1,0 +1,372 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Araştırma Konusu Geliştirme Sihirbazı</title>
+<link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+
+<!-- ============ GİRİŞ / KAYIT ============ -->
+<div id="authScreen" class="authwrap" hidden>
+  <div class="authcard">
+    <span class="mark">ARAŞTIRMA SİHİRBAZI</span>
+    <h1>Akademik Araştırma Konusu Geliştirme</h1>
+    <p class="muted">Doktora öğrencileri için adım adım konu geliştirme platformu. Üyelik danışman onayına tabidir.</p>
+    <div class="tabs">
+      <button id="tabLogin" class="active">Giriş yap</button>
+      <button id="tabRegister">Kayıt ol</button>
+    </div>
+    <div id="authMsg" class="msg"></div>
+
+    <form id="loginForm">
+      <label class="f">E-posta</label>
+      <input type="email" id="loginEmail" required autocomplete="email">
+      <label class="f">Şifre</label>
+      <input type="password" id="loginPass" required autocomplete="current-password">
+      <div class="btnrow">
+        <button type="submit" class="btn acc">Giriş yap</button>
+        <button type="button" class="btn ghost sm" id="forgotBtn">Şifremi unuttum</button>
+      </div>
+    </form>
+
+    <form id="registerForm" hidden>
+      <div class="grid2">
+        <div><label class="f">Ad</label><input type="text" id="regName" required></div>
+        <div><label class="f">Soyad</label><input type="text" id="regSurname" required></div>
+      </div>
+      <label class="f">E-posta</label>
+      <input type="email" id="regEmail" required autocomplete="email">
+      <label class="f">Şifre (en az 6 karakter)</label>
+      <input type="password" id="regPass" required minlength="6" autocomplete="new-password">
+      <label class="f">Program / anabilim dalı</label>
+      <input type="text" id="regProgram" placeholder="Örn. Alman Dili Eğitimi Doktora">
+      <div class="btnrow">
+        <button type="submit" class="btn acc">Kayıt ol</button>
+      </div>
+      <p class="hint" style="margin-top:10px">Kaydınız oluşturulduktan sonra danışman onayı beklersiniz. Onaylandığında giriş yapabilirsiniz.</p>
+    </form>
+  </div>
+</div>
+
+<!-- ============ ONAY BEKLEME ============ -->
+<div id="waitScreen" class="authwrap" hidden>
+  <div class="authcard waitcard">
+    <div class="big">⏳</div>
+    <h2>Kaydınız danışman onayı bekliyor</h2>
+    <p class="muted">Danışmanınız kaydınızı onayladığında bu sayfadan giriş yapabileceksiniz. Onay durumunu kontrol etmek için sayfayı yenileyebilirsiniz.</p>
+    <div class="btnrow" style="justify-content:center">
+      <button class="btn ghost" id="waitRefresh">Durumu yenile</button>
+      <button class="btn" id="waitLogout">Çıkış yap</button>
+    </div>
+  </div>
+</div>
+
+<!-- ============ REDDEDİLDİ ============ -->
+<div id="rejectScreen" class="authwrap" hidden>
+  <div class="authcard waitcard">
+    <div class="big">✖</div>
+    <h2>Kaydınız onaylanmadı</h2>
+    <p class="muted">Ayrıntılı bilgi için danışmanınızla iletişime geçin.</p>
+    <div class="btnrow" style="justify-content:center">
+      <button class="btn" id="rejectLogout">Çıkış yap</button>
+    </div>
+  </div>
+</div>
+
+<!-- ============ UYGULAMA ============ -->
+<div id="appScreen" hidden>
+  <div class="topbar">
+    <span class="mark">ARAŞTIRMA SİHİRBAZI</span>
+    <span class="title">Doktora · Konu Geliştirme Rehberi</span>
+    <span class="spacer"></span>
+    <span id="saveState" class="savestate">—</span>
+    <span class="who" id="whoAmI"></span>
+    <button class="btn sm ghost" style="border-color:#fff;color:#fff" id="logoutBtn">Çıkış</button>
+  </div>
+
+  <div class="layout">
+    <nav class="rail" id="rail">
+      <div class="progresswrap">
+        <div class="progressbar"><div id="progressFill"></div></div>
+        <div class="progresslabel" id="progressLabel">%0 tamamlandı</div>
+      </div>
+      <div class="rail-head">Aşamalar</div>
+      <!-- aşama düğmeleri JS ile eklenir -->
+    </nav>
+
+    <main class="content" id="stages">
+
+      <!-- ===== AŞAMA 1 ===== -->
+      <section class="stage" data-stage="1">
+        <span class="eyebrow">Aşama 1 / 11</span>
+        <h1>İlgi alanını seç</h1>
+        <div class="yap"><b>YAP:</b> Boş sayfaya konu yazmaya çalışma; aşağıdaki alan havuzundan hareket et. Sana akademik olarak ilginç gelen <b>en az 3, en fazla 5</b> alanı işaretle, her biri için kısa gerekçe yaz.</div>
+        <div class="card">
+          <h3>Alan havuzu</h3>
+          <div class="checks" id="alanChecks"></div>
+          <label class="f">Diğer (listede yoksa)</label>
+          <input type="text" data-k="s1.diger" placeholder="Kendi alanınızı yazın">
+        </div>
+        <div class="card">
+          <h3>Seçtiğim alanlar ve gerekçelerim</h3>
+          <p class="hint">Yukarıda işaretlediğiniz alanlar otomatik listelenir.</p>
+          <table class="t"><thead><tr><th style="width:24%">Alan</th><th>Neden ilgimi çekiyor?</th><th>Fark ettiğim ilk sorun</th><th>Çalışabileceğim bağlam</th></tr></thead>
+          <tbody id="alanRows"></tbody></table>
+          <div class="kontrol"><b>Kontrol sorusu:</b> Seçtiğim alan yalnızca popüler olduğu için mi ilgimi çekiyor, yoksa gerçekten araştırmaya değer bir sorun içeriyor mu?</div>
+        </div>
+      </section>
+
+      <!-- ===== AŞAMA 2 ===== -->
+      <section class="stage" data-stage="2">
+        <span class="eyebrow">Aşama 2 / 11</span>
+        <h1>Geniş alanı daralt</h1>
+        <div class="yap"><b>YAP:</b> Seçtiğin alanı beş açıdan daralt: hedef grup, beceri/odak, araç, bağlam ve veri. Her seçimden sonra "Bu seçim konuyu daha araştırılabilir hale getiriyor mu?" diye kontrol et.</div>
+        <div class="card"><h3>Hedef grup</h3><div class="checks" id="hedefChecks"></div></div>
+        <div class="card"><h3>Beceri / odak</h3><div class="checks" id="beceriChecks"></div></div>
+        <div class="card"><h3>Araç / ortam</h3><div class="checks" id="aracChecks"></div></div>
+        <div class="card"><h3>Bağlam</h3><div class="checks" id="baglamChecks"></div></div>
+        <div class="card"><h3>Veri türü</h3><div class="checks" id="veriChecks"></div></div>
+        <div class="card">
+          <h3>Daraltılmış konu cümlem</h3>
+          <p class="hint">Örnek: "Almanca öğretmen adaylarının üretken yapay zekâ ile ders materyali hazırlarken pedagojik uygunluğu nasıl değerlendirdikleri"</p>
+          <textarea data-k="s2.konuCumlesi" placeholder="Geniş alan + hedef grup + odak + veri = daraltılmış konu cümlesi"></textarea>
+        </div>
+      </section>
+
+      <!-- ===== AŞAMA 3 ===== -->
+      <section class="stage" data-stage="3">
+        <span class="eyebrow">Aşama 3 / 11</span>
+        <h1>Gözlemden araştırma problemine geç</h1>
+        <div class="yap"><b>YAP:</b> "İlgimi çekiyor" ifadesini "araştırılabilir bir problem var" ifadesine dönüştür. Önce durumu, sonra önemini yaz; en sonunda 2–3 cümlelik problem paragrafına çevir.</div>
+        <div class="card">
+          <label class="f">Ne fark ettim?</label><textarea data-k="s3.fark"></textarea>
+          <label class="f">Bu durum neden önemli?</label><textarea data-k="s3.onem"></textarea>
+          <label class="f">Bu durum kimleri ilgilendiriyor?</label><textarea data-k="s3.kim"></textarea>
+          <label class="f">Bu konu veriyle araştırılabilir mi? Nasıl?</label><textarea data-k="s3.veri"></textarea>
+          <label class="f">Benim çalışmam neyi görünür kılabilir?</label><textarea data-k="s3.katki"></textarea>
+        </div>
+        <div class="card">
+          <h3>Problem paragrafım</h3>
+          <p class="hint">Kalıp: "Mevcut durumda ... görülmektedir. Ancak ... konusunda yeterli bilgi bulunmamaktadır. Bu nedenle ... konusunun incelenmesi önem taşımaktadır."</p>
+          <textarea data-k="s3.paragraf" style="min-height:110px"></textarea>
+        </div>
+      </section>
+
+      <!-- ===== AŞAMA 4 ===== -->
+      <section class="stage" data-stage="4">
+        <span class="eyebrow">Aşama 4 / 11</span>
+        <h1>Anahtar kelimeleri üret</h1>
+        <div class="yap"><b>YAP:</b> Literatürü rastgele arama. Konunun bileşenlerini yaz, Türkçe–İngilizce–Almanca karşılıklarını üret; aramaları ikili/üçlü kombinasyonlarla yap.</div>
+        <div class="card">
+          <table class="t"><thead><tr><th>Bileşen</th><th>Türkçe</th><th>İngilizce</th><th>Almanca</th></tr></thead>
+          <tbody>
+            <tr><td><b>Konu</b></td><td><input data-k="s4.konu.tr"></td><td><input data-k="s4.konu.en"></td><td><input data-k="s4.konu.de"></td></tr>
+            <tr><td><b>Hedef grup</b></td><td><input data-k="s4.grup.tr"></td><td><input data-k="s4.grup.en"></td><td><input data-k="s4.grup.de"></td></tr>
+            <tr><td><b>Odak / değişken</b></td><td><input data-k="s4.odak.tr"></td><td><input data-k="s4.odak.en"></td><td><input data-k="s4.odak.de"></td></tr>
+            <tr><td><b>Yöntem / veri</b></td><td><input data-k="s4.yontem.tr"></td><td><input data-k="s4.yontem.en"></td><td><input data-k="s4.yontem.de"></td></tr>
+            <tr><td><b>Bağlam</b></td><td><input data-k="s4.baglam.tr"></td><td><input data-k="s4.baglam.en"></td><td><input data-k="s4.baglam.de"></td></tr>
+          </tbody></table>
+          <div class="btnrow"><button class="btn acc" id="komboBtn" type="button">Arama kombinasyonlarını üret</button></div>
+          <div id="komboList" style="margin-top:12px"></div>
+        </div>
+      </section>
+
+      <!-- ===== AŞAMA 5 ===== -->
+      <section class="stage" data-stage="5">
+        <span class="eyebrow">Aşama 5 / 11</span>
+        <h1>İlk literatür okuması</h1>
+        <div class="yap"><b>YAP:</b> Amaç bütün literatürü bitirmek değil, alanın nasıl çalışıldığını görmek. 5–10 güncel çalışma seç; amaç, yöntem, bulgu ve sınırlılık notu çıkar.</div>
+        <div class="card">
+          <h3>Literatür ara <span class="hint">(OpenAlex — gerçek DOI bağlantıları ve özetler)</span></h3>
+          <div class="grid2" style="align-items:end">
+            <div>
+              <label class="f">Arama sorgusu (İngilizce sorgular en geniş sonucu verir)</label>
+              <input type="text" id="litQuery" placeholder='örn. "pre-service teachers" AI material development'>
+            </div>
+            <div class="btnrow" style="margin:0 0 2px">
+              <button class="btn acc" id="litSearchBtn" type="button">Ara</button>
+              <select id="litYear" style="width:auto">
+                <option value="">Tüm yıllar</option>
+                <option value="2020">2020 ve sonrası</option>
+                <option value="2022" selected>2022 ve sonrası</option>
+                <option value="2024">2024 ve sonrası</option>
+              </select>
+            </div>
+          </div>
+          <div id="litResults"></div>
+        </div>
+        <div class="card">
+          <h3>Okuma notlarım</h3>
+          <p class="hint">Arama sonuçlarındaki "Notlarıma ekle" düğmesi kaynağı buraya taşır; kalan sütunları kendiniz doldurun.</p>
+          <table class="t"><thead><tr><th style="width:26%">Kaynak</th><th>Amaç</th><th>Yöntem / veri</th><th>Temel bulgu</th><th>Benim fikrim için anlamı</th><th></th></tr></thead>
+          <tbody id="litRows"></tbody></table>
+          <div class="btnrow"><button class="btn ghost sm" id="litAddRow" type="button">+ Boş satır ekle</button></div>
+        </div>
+        <div class="card">
+          <h3>Okuma sonrası kontrol</h3>
+          <label class="f">Benzer çalışmalar genellikle hangi yöntemi kullanmış?</label>
+          <input data-k="s5.yontemNotu" placeholder="Anket / görüşme / deneysel / doküman analizi / karma ...">
+          <label class="f">En sık çalışılan hedef grup kim?</label>
+          <input data-k="s5.grupNotu">
+          <label class="f">Bu çalışmalarda eksik kalan yön ne olabilir?</label>
+          <textarea data-k="s5.eksikNotu"></textarea>
+        </div>
+      </section>
+
+      <!-- ===== AŞAMA 6 ===== -->
+      <section class="stage" data-stage="6">
+        <span class="eyebrow">Aşama 6 / 11</span>
+        <h1>Araştırma boşluğunu belirle</h1>
+        <div class="yap"><b>YAP:</b> Boşluk "hiç çalışma yok" demek zorunda değil. Çoğu zaman farklı bağlam, veri, yöntem veya kuramsal bakış eksiktir. Her işaretlediğin boşluk için en az bir kanıt/kaynak yaz.</div>
+        <div class="card">
+          <div id="boslukChecks"></div>
+        </div>
+        <div class="card">
+          <h3>Araştırma boşluğu paragrafım</h3>
+          <p class="hint">Kalıp: "Mevcut literatürde ... üzerine çalışmalar bulunmakla birlikte, ... bağlamında ... konusunun yeterince incelenmediği görülmektedir..."</p>
+          <textarea data-k="s6.paragraf" style="min-height:110px"></textarea>
+        </div>
+      </section>
+
+      <!-- ===== AŞAMA 7 ===== -->
+      <section class="stage" data-stage="7">
+        <span class="eyebrow">Aşama 7 / 11</span>
+        <h1>Araştırma sorularını yaz</h1>
+        <div class="yap"><b>YAP:</b> Amacına uygun soru kalıbını seç; sorunun açık, sınırlı, veriyle cevaplanabilir ve yöntemle uyumlu olduğunu kontrol et.</div>
+        <div class="card">
+          <h3>Soru kalıpları</h3>
+          <p class="hint">Bir kalıba tıklayınca ana soru alanına kopyalanır; boşlukları kendi konunuzla doldurun.</p>
+          <div id="kalipList"></div>
+        </div>
+        <div class="card">
+          <label class="f">Ana araştırma sorusu</label>
+          <textarea data-k="s7.ana"></textarea>
+          <label class="f">Alt soru 1</label><textarea data-k="s7.alt1" style="min-height:48px"></textarea>
+          <label class="f">Alt soru 2</label><textarea data-k="s7.alt2" style="min-height:48px"></textarea>
+          <label class="f">Alt soru 3</label><textarea data-k="s7.alt3" style="min-height:48px"></textarea>
+          <div class="kontrol">
+            <b>Kontrol:</b> Soru çok geniş mi? Veriyle cevaplanabilir mi? Kimden veri toplanacağı belli mi? Yöntemle uyumlu mu? Danışmanla tartışılabilecek kadar net mi?
+          </div>
+        </div>
+      </section>
+
+      <!-- ===== AŞAMA 8 ===== -->
+      <section class="stage" data-stage="8">
+        <span class="eyebrow">Aşama 8 / 11</span>
+        <h1>Soruyu yöntemle eşleştir</h1>
+        <div class="yap"><b>YAP:</b> Yöntemi önce değil, araştırma sorusundan sonra seç. Süre, erişim ve etik izin açısından gerçekçi olup olmadığını kontrol et.</div>
+        <div class="card">
+          <label class="f">Sorumun tipi</label>
+          <select data-k="s8.tip">
+            <option value="">Seçin…</option>
+            <option>Katılımcılar ne düşünüyor? (görüş)</option>
+            <option>Katılımcılar bir ölçeğe ne düzeyde katılıyor?</option>
+            <option>Uygulama öncesi–sonrası değişim var mı?</option>
+            <option>Katılımcılar süreci nasıl deneyimliyor?</option>
+            <option>Hem düzeyi hem nedeni anlamak istiyorum</option>
+            <option>Ders kitabında / metinde ne var?</option>
+            <option>AI çıktıları nasıl özellikler gösteriyor?</option>
+            <option>Bir temsil nasıl kuruluyor?</option>
+          </select>
+          <div id="yontemOneri" class="kontrol" style="display:none"></div>
+          <label class="f">Seçtiğim yöntem</label>
+          <select data-k="s8.yontem" id="yontemSelect"></select>
+          <label class="f">Veri kaynağı</label>
+          <input data-k="s8.veriKaynagi" placeholder="Örn. öğretmen adaylarıyla yarı yapılandırılmış görüşme + ürün analizi">
+          <label class="f">Neden uygun?</label>
+          <textarea data-k="s8.gerekce"></textarea>
+        </div>
+      </section>
+
+      <!-- ===== AŞAMA 9 ===== -->
+      <section class="stage" data-stage="9">
+        <span class="eyebrow">Aşama 9 / 11</span>
+        <h1>Veri kaynağı ve yapılabilirlik</h1>
+        <div class="yap"><b>YAP:</b> Konu ilginç olsa bile veri erişimi yoksa araştırma ilerlemez. Yapılabilirlik düşükse konuyu küçült veya veri kaynağını değiştir.</div>
+        <div class="card">
+          <label class="f">Toplayacağım veri</label><input data-k="s9.veri">
+          <div class="grid3">
+            <div><label class="f">Kimden / nereden?</label><input data-k="s9.kimden"></div>
+            <div><label class="f">Tahmini sayı</label><input data-k="s9.sayi"></div>
+            <div><label class="f">Süre</label><input data-k="s9.sure"></div>
+          </div>
+          <div class="grid2">
+            <div><label class="f">Toplama aracı</label><input data-k="s9.arac"></div>
+            <div><label class="f">Etik izin gerekiyor mu? Süreç?</label><input data-k="s9.etik"></div>
+          </div>
+          <div class="kontrol"><b>Yapılabilirlik kontrolü:</b> Veriye erişimim gerçekçi mi? Süre yaz dönemi için uygun mu? Ölçme aracı geliştirilebilir mi? Konu bir pilot çalışmaya indirgenebilir mi?</div>
+          <label class="f">Yapılabilirlik değerlendirmem</label>
+          <textarea data-k="s9.degerlendirme"></textarea>
+        </div>
+      </section>
+
+      <!-- ===== AŞAMA 10 ===== -->
+      <section class="stage" data-stage="10">
+        <span class="eyebrow">Aşama 10 / 11</span>
+        <h1>Küçük ön araştırma / pilot deneme</h1>
+        <div class="yap"><b>YAP:</b> Büyük veri toplama; önce fikrin çalışıp çalışmadığını küçük ölçekte dene (3–5 görüşme, 10–15 anket, 2–3 doküman, 3–5 AI çıktısı gibi).</div>
+        <div class="card">
+          <h3>Ön araştırma türüm</h3>
+          <div class="checks" id="pilotChecks"></div>
+        </div>
+        <div class="card">
+          <label class="f">Ne denedim / deneyeceğim?</label><textarea data-k="s10.deneme"></textarea>
+          <label class="f">Hangi veriyle?</label><textarea data-k="s10.veri" style="min-height:48px"></textarea>
+          <label class="f">Ne fark ettim?</label><textarea data-k="s10.gozlem"></textarea>
+          <label class="f">Fikir çalışıyor mu? Neden?</label><textarea data-k="s10.sonuc" style="min-height:48px"></textarea>
+          <label class="f">Ne değiştirmem gerekir?</label><textarea data-k="s10.degisiklik" style="min-height:48px"></textarea>
+          <label class="f">Bu fikir ne olabilir?</label>
+          <select data-k="s10.potansiyel">
+            <option value="">Seçin…</option>
+            <option>Tez olabilir</option>
+            <option>Makale olabilir</option>
+            <option>Proje olabilir</option>
+            <option>Şimdilik zayıf</option>
+          </select>
+        </div>
+      </section>
+
+      <!-- ===== AŞAMA 11 ===== -->
+      <section class="stage" data-stage="11">
+        <span class="eyebrow">Aşama 11 / 11</span>
+        <h1>Danışmanla paylaşılacak araştırma fikri özeti</h1>
+        <div class="yap"><b>YAP:</b> Son çıktı kesin tez konusu değil; danışmanla tartışılacak bir başlangıç belgesidir. Kısa ve öz yaz; sonunda 5–7 kaynaklık ilk kaynakça bulunsun.</div>
+        <div class="btnrow">
+          <button class="btn acc" id="ozetDoldur" type="button">Önceki aşamalardan otomatik doldur</button>
+        </div>
+        <div class="card">
+          <label class="f">Geçici başlık</label><input data-k="s11.baslik">
+          <label class="f">Genel alan</label><input data-k="s11.alan">
+          <label class="f">Daraltılmış konu</label><textarea data-k="s11.konu" style="min-height:48px"></textarea>
+          <label class="f">Problem</label><textarea data-k="s11.problem"></textarea>
+          <label class="f">Literatür boşluğu</label><textarea data-k="s11.bosluk"></textarea>
+          <label class="f">Amaç</label><textarea data-k="s11.amac" style="min-height:48px"></textarea>
+          <label class="f">Ana araştırma sorusu</label><textarea data-k="s11.ana" style="min-height:48px"></textarea>
+          <label class="f">Alt sorular</label><textarea data-k="s11.alt"></textarea>
+          <label class="f">Yöntem ve gerekçesi</label><textarea data-k="s11.yontem" style="min-height:48px"></textarea>
+          <label class="f">Veri kaynağı</label><textarea data-k="s11.veriKaynagi" style="min-height:48px"></textarea>
+          <label class="f">Ön araştırmadan çıkan not</label><textarea data-k="s11.pilotNotu" style="min-height:48px"></textarea>
+          <label class="f">Beklenen katkı</label><textarea data-k="s11.katki"></textarea>
+          <label class="f">İlk kaynakça (her satıra bir kaynak)</label><textarea data-k="s11.kaynakca" style="min-height:110px"></textarea>
+        </div>
+        <div class="btnrow">
+          <button class="btn" id="ozetOnizle" type="button">Önizle</button>
+          <button class="btn acc" id="ozetIndir" type="button">Word olarak indir (.doc)</button>
+          <button class="btn ghost" id="ozetYazdir" type="button">Yazdır / PDF</button>
+        </div>
+        <div id="ozetPreview" class="ozet-preview" style="margin-top:18px; display:none"></div>
+      </section>
+
+      <div class="navrow">
+        <button class="btn ghost" id="prevBtn" type="button">← Önceki aşama</button>
+        <button class="btn" id="nextBtn" type="button">Sonraki aşama →</button>
+      </div>
+    </main>
+  </div>
+</div>
+
+<script type="module" src="js/app.js"></script>
+</body>
+</html>
