@@ -29,11 +29,14 @@ $("#loginForm").onsubmit = async (e) => {
 };
 $("#logoutBtn").onclick = () => signOut(auth);
 
+// E-postaları büyük/küçük harf ve boşluk farkından bağımsız karşılaştır
+const normEmail = (e) => String(e || "").trim().toLowerCase();
+
 onAuthStateChanged(auth, async (user) => {
   if (!user) { $("#authScreen").hidden = false; $("#panelScreen").hidden = true; return; }
   appCfg = await getAppConfig();
-  const advisors = appCfg?.advisorEmails || [];
-  if (!advisors.includes(user.email)) {
+  const advisors = (appCfg?.advisorEmails || []).map(normEmail);
+  if (!advisors.includes(normEmail(user.email))) {
     msg("Bu hesap danışman olarak yetkilendirilmemiş: " + user.email, "err");
     await signOut(auth);
     return;
@@ -266,7 +269,7 @@ function renderOptions() {
 $("#saveOptions").onclick = async () => {
   const lines = (el) => $("#" + el).value.split("\n").map(s => s.trim()).filter(Boolean);
   const advisorEmails = lines("optAdvisors");
-  if (!advisorEmails.includes(auth.currentUser.email)) {
+  if (!advisorEmails.map(normEmail).includes(normEmail(auth.currentUser.email))) {
     if (!confirm("Uyarı: kendi e-postanız danışman listesinde yok; kaydederseniz panele erişiminizi kaybedersiniz. Yine de devam edilsin mi?")) return;
   }
   const options = {};
