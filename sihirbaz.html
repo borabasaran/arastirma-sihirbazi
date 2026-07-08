@@ -1,0 +1,759 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Araştırma Sihirbazı (ArSi)</title>
+<link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+
+<!-- ============ GİRİŞ / KAYIT ============ -->
+<div id="authScreen" class="authwrap">
+  <div class="authcard">
+    <span class="mark">ArSi</span>
+    <h1>Araştırma Sihirbazı</h1>
+    <p class="muted">Adım adım konu geliştirme platformu. Üyelik danışman onayına tabidir.</p>
+    <div class="tabs">
+      <button id="tabLogin" class="active">Giriş yap</button>
+      <button id="tabRegister">Kayıt ol</button>
+    </div>
+    <div id="authMsg" class="msg"></div>
+
+    <form id="loginForm">
+      <label class="f">E-posta</label>
+      <input type="email" id="loginEmail" required autocomplete="email">
+      <div class="btnrow">
+        <button type="submit" class="btn acc" id="loginBtn">Giriş yap</button>
+      </div>
+    </form>
+
+    <form id="registerForm" hidden>
+      <div class="grid2">
+        <div><label class="f">Ad</label><input type="text" id="regName" required></div>
+        <div><label class="f">Soyad</label><input type="text" id="regSurname" required></div>
+      </div>
+      <label class="f">E-posta</label>
+      <input type="email" id="regEmail" required autocomplete="email">
+      <label class="f">Program / anabilim dalı</label>
+      <input type="text" id="regProgram" placeholder="Örn. Alman Dili Eğitimi Doktora">
+      <div class="btnrow">
+        <button type="submit" class="btn acc" id="regBtn">Kayıt ol</button>
+      </div>
+      <p class="hint" style="margin-top:10px">Kaydınız oluşturulduktan sonra danışman onayı beklersiniz. Onaylandığında sadece e-postanızla giriş yapabilirsiniz.</p>
+    </form>
+  </div>
+</div>
+
+<!-- ============ ONAY BEKLEME ============ -->
+<div id="waitScreen" class="authwrap" hidden>
+  <div class="authcard waitcard">
+    <div class="big">⏳</div>
+    <h2>Kaydınız danışman onayı bekliyor</h2>
+    <p class="muted">Danışmanınız kaydınızı onayladığında bu sayfadan giriş yapabileceksiniz.</p>
+    <div class="btnrow" style="justify-content:center">
+      <button class="btn ghost" id="waitRefresh">Durumu yenile</button>
+      <button class="btn" id="waitLogout">Çıkış yap</button>
+    </div>
+  </div>
+</div>
+
+<!-- ============ REDDEDİLDİ ============ -->
+<div id="rejectScreen" class="authwrap" hidden>
+  <div class="authcard waitcard">
+    <div class="big">✖</div>
+    <h2>Kaydınız onaylanmadı</h2>
+    <p class="muted">Ayrıntılı bilgi için danışmanınızla iletişime geçin.</p>
+    <div class="btnrow" style="justify-content:center">
+      <button class="btn" id="rejectLogout">Çıkış yap</button>
+    </div>
+  </div>
+</div>
+
+<!-- ============ UYGULAMA ============ -->
+<div id="appScreen" hidden>
+  <div class="topbar">
+    <span class="mark">ArSi</span>
+    <span class="title">Doktora · Konu Geliştirme Rehberi</span>
+    <span class="spacer"></span>
+    <span id="saveState" class="savestate">—</span>
+    <span class="who" id="whoAmI"></span>
+    <button class="btn sm ghost" style="border-color:#fff;color:#fff" id="logoutBtn">Çıkış</button>
+  </div>
+
+  <div class="layout">
+    <nav class="rail" id="rail">
+      <div class="progresswrap">
+        <div class="progressbar"><div id="progressFill"></div></div>
+        <div class="progresslabel" id="progressLabel">%0 tamamlandı</div>
+      </div>
+      <div class="rail-head">Aşamalar</div>
+    </nav>
+
+    <main class="content" id="stages">
+
+      <section class="stage" data-stage="1">
+        <span class="eyebrow">Aşama 1 / 11</span>
+        <h1>İlgi alanını seç</h1>
+        <div class="yap"><b>YAP:</b> Boş sayfaya konu yazmaya çalışma; aşağıdaki alan havuzundan hareket et. Sana akademik olarak ilginç gelen <b>en az 3, en fazla 5</b> alanı işaretle, her biri için kısa gerekçe yaz.</div>
+        <div class="card">
+          <h3>Alan havuzu</h3>
+          <div class="checks" id="alanChecks"></div>
+          <label class="f">Diğer (listede yoksa)</label>
+          <input type="text" data-k="s1.diger" placeholder="Kendi alanınızı yazın">
+        </div>
+        <div class="card">
+          <h3>Seçtiğim alanlar ve gerekçelerim</h3>
+          <p class="hint">Yukarıda işaretlediğiniz alanlar otomatik listelenir.</p>
+          <table class="t"><thead><tr><th style="width:24%">Alan</th><th>Neden ilgimi çekiyor?</th><th>Fark ettiğim ilk sorun</th><th>Çalışabileceğim bağlam</th></tr></thead>
+          <tbody id="alanRows"></tbody></table>
+          <div class="kontrol"><b>Kontrol sorusu:</b> Seçtiğim alan yalnızca popüler olduğu için mi ilgimi çekiyor, yoksa gerçekten araştırmaya değer bir sorun içeriyor mu?</div>
+        </div>
+      </section>
+
+      <section class="stage" data-stage="2">
+        <span class="eyebrow">Aşama 2 / 11</span>
+        <h1>Geniş alanı daralt</h1>
+        <div class="yap"><b>YAP:</b> Seçtiğin alanı beş açıdan daralt: hedef grup, beceri/odak, araç, bağlam ve veri.</div>
+        <div class="card"><h3>Hedef grup</h3><div class="checks" id="hedefChecks"></div></div>
+        <div class="card"><h3>Beceri / odak</h3><div class="checks" id="beceriChecks"></div></div>
+        <div class="card"><h3>Araç / ortam</h3><div class="checks" id="aracChecks"></div></div>
+        <div class="card"><h3>Bağlam</h3><div class="checks" id="baglamChecks"></div></div>
+        <div class="card"><h3>Veri türü</h3><div class="checks" id="veriChecks"></div></div>
+        <div class="card">
+          <h3>Daraltılmış konu cümlem</h3>
+          <textarea data-k="s2.konuCumlesi" placeholder="Geniş alan + hedef grup + odak + veri = daraltılmış konu cümlesi"></textarea>
+        </div>
+      </section>
+
+      <section class="stage" data-stage="3">
+        <span class="eyebrow">Aşama 3 / 11</span>
+        <h1>Gözlemden araştırma problemine geç</h1>
+        <div class="card">
+          <label class="f">Ne fark ettim?</label><textarea data-k="s3.fark"></textarea>
+          <label class="f">Bu durum neden önemli?</label><textarea data-k="s3.onem"></textarea>
+          <label class="f">Bu durum kimleri ilgilendiriyor?</label><textarea data-k="s3.kim"></textarea>
+          <label class="f">Bu konu veriyle araştırılabilir mi? Nasıl?</label><textarea data-k="s3.veri"></textarea>
+          <label class="f">Benim çalışmam neyi görünür kılabilir?</label><textarea data-k="s3.katki"></textarea>
+        </div>
+        <div class="card">
+          <h3>Problem paragrafım</h3>
+          <textarea data-k="s3.paragraf" style="min-height:110px"></textarea>
+        </div>
+      </section>
+
+      <section class="stage" data-stage="4">
+        <span class="eyebrow">Aşama 4 / 11</span>
+        <h1>Anahtar kelimeleri üret</h1>
+        <div class="card">
+          <table class="t"><thead><tr><th>Bileşen</th><th>Türkçe</th><th>İngilizce</th><th>Almanca</th></tr></thead>
+          <tbody>
+            <tr><td><b>Konu</b></td><td><input data-k="s4.konu.tr"></td><td><input data-k="s4.konu.en"></td><td><input data-k="s4.konu.de"></td></tr>
+            <tr><td><b>Hedef grup</b></td><td><input data-k="s4.grup.tr"></td><td><input data-k="s4.grup.en"></td><td><input data-k="s4.grup.de"></td></tr>
+            <tr><td><b>Odak / değişken</b></td><td><input data-k="s4.odak.tr"></td><td><input data-k="s4.odak.en"></td><td><input data-k="s4.odak.de"></td></tr>
+            <tr><td><b>Yöntem / veri</b></td><td><input data-k="s4.yontem.tr"></td><td><input data-k="s4.yontem.en"></td><td><input data-k="s4.yontem.de"></td></tr>
+            <tr><td><b>Bağlam</b></td><td><input data-k="s4.baglam.tr"></td><td><input data-k="s4.baglam.en"></td><td><input data-k="s4.baglam.de"></td></tr>
+          </tbody></table>
+          <div class="btnrow"><button class="btn acc" id="komboBtn" type="button">Arama kombinasyonlarını üret</button></div>
+          <div id="komboList" style="margin-top:12px"></div>
+        </div>
+      </section>
+
+      <section class="stage" data-stage="5">
+        <span class="eyebrow">Aşama 5 / 11</span>
+        <h1>İlk literatür okuması</h1>
+        <div class="card">
+          <h3>Literatür ara <span class="hint">(OpenAlex)</span></h3>
+          <div class="grid2" style="align-items:end">
+            <div>
+              <label class="f">Arama sorgusu</label>
+              <input type="text" id="litQuery" placeholder='örn. "pre-service teachers" AI material development'>
+            </div>
+            <div class="btnrow" style="margin:0 0 2px">
+              <button class="btn acc" id="litSearchBtn" type="button">Ara</button>
+              <select id="litYear" style="width:auto">
+                <option value="">Tüm yıllar</option>
+                <option value="2020">2020 ve sonrası</option>
+                <option value="2022" selected>2022 ve sonrası</option>
+                <option value="2024">2024 ve sonrası</option>
+              </select>
+            </div>
+          </div>
+          <div id="litResults"></div>
+        </div>
+        <div class="card">
+          <h3>Okuma notlarım</h3>
+          <table class="t"><thead><tr><th style="width:26%">Kaynak</th><th>Amaç</th><th>Yöntem / veri</th><th>Temel bulgu</th><th>Benim fikrim için anlamı</th><th></th></tr></thead>
+          <tbody id="litRows"></tbody></table>
+          <div class="btnrow"><button class="btn ghost sm" id="litAddRow" type="button">+ Boş satır ekle</button></div>
+        </div>
+        <div class="card">
+          <h3>Okuma sonrası kontrol</h3>
+          <input data-k="s5.yontemNotu" placeholder="Anket / görüşme / deneysel / doküman analizi / karma ...">
+          <label class="f">En sık çalışılan hedef grup kim?</label>
+          <input data-k="s5.grupNotu">
+          <label class="f">Bu çalışmalarda eksik kalan yön ne olabilir?</label>
+          <textarea data-k="s5.eksikNotu"></textarea>
+        </div>
+      </section>
+
+      <section class="stage" data-stage="6">
+        <span class="eyebrow">Aşama 6 / 11</span>
+        <h1>Araştırma boşluğunu belirle</h1>
+        <div class="card"><div id="boslukChecks"></div></div>
+        <div class="card">
+          <h3>Araştırma boşluğu paragrafım</h3>
+          <textarea data-k="s6.paragraf" style="min-height:110px"></textarea>
+        </div>
+      </section>
+
+      <section class="stage" data-stage="7">
+        <span class="eyebrow">Aşama 7 / 11</span>
+        <h1>Araştırma sorularını yaz</h1>
+        <div class="card">
+          <h3>Soru kalıpları</h3>
+          <div id="kalipList"></div>
+        </div>
+        <div class="card">
+          <label class="f">Ana araştırma sorusu</label>
+          <textarea data-k="s7.ana"></textarea>
+          <label class="f">Alt soru 1</label><textarea data-k="s7.alt1" style="min-height:48px"></textarea>
+          <label class="f">Alt soru 2</label><textarea data-k="s7.alt2" style="min-height:48px"></textarea>
+          <label class="f">Alt soru 3</label><textarea data-k="s7.alt3" style="min-height:48px"></textarea>
+        </div>
+      </section>
+
+      <section class="stage" data-stage="8">
+        <span class="eyebrow">Aşama 8 / 11</span>
+        <h1>Soruyu yöntemle eşleştir</h1>
+        <div class="card">
+          <label class="f">Sorumun tipi</label>
+          <select data-k="s8.tip">
+            <option value="">Seçin…</option>
+            <option>Katılımcılar ne düşünüyor? (görüş)</option>
+            <option>Katılımcılar bir ölçeğe ne düzeyde katılıyor?</option>
+            <option>Uygulama öncesi–sonrası değişim var mı?</option>
+            <option>Katılımcılar süreci nasıl deneyimliyor?</option>
+            <option>Hem düzeyi hem nedeni anlamak istiyorum</option>
+            <option>Ders kitabında / metinde ne var?</option>
+            <option>AI çıktıları nasıl özellikler gösteriyor?</option>
+            <option>Bir temsil nasıl kuruluyor?</option>
+          </select>
+          <div id="yontemOneri" class="kontrol" style="display:none"></div>
+          <label class="f">Seçtiğim yöntem</label>
+          <select data-k="s8.yontem" id="yontemSelect"></select>
+          <label class="f">Veri kaynağı</label>
+          <input data-k="s8.veriKaynagi">
+          <label class="f">Neden uygun?</label>
+          <textarea data-k="s8.gerekce"></textarea>
+        </div>
+      </section>
+
+      <section class="stage" data-stage="9">
+        <span class="eyebrow">Aşama 9 / 11</span>
+        <h1>Veri kaynağı ve yapılabilirlik</h1>
+        <div class="card">
+          <label class="f">Toplayacağım veri</label><input data-k="s9.veri">
+          <div class="grid3">
+            <div><label class="f">Kimden / nereden?</label><input data-k="s9.kimden"></div>
+            <div><label class="f">Tahmini sayı</label><input data-k="s9.sayi"></div>
+            <div><label class="f">Süre</label><input data-k="s9.sure"></div>
+          </div>
+          <div class="grid2">
+            <div><label class="f">Toplama aracı</label><input data-k="s9.arac"></div>
+            <div><label class="f">Etik izin gerekiyor mu? Süreç?</label><input data-k="s9.etik"></div>
+          </div>
+          <label class="f">Yapılabilirlik değerlendirmem</label>
+          <textarea data-k="s9.degerlendirme"></textarea>
+        </div>
+      </section>
+
+      <section class="stage" data-stage="10">
+        <span class="eyebrow">Aşama 10 / 11</span>
+        <h1>Küçük ön araştırma / pilot deneme</h1>
+        <div class="card"><h3>Ön araştırma türüm</h3><div class="checks" id="pilotChecks"></div></div>
+        <div class="card">
+          <label class="f">Ne denedim / deneyeceğim?</label><textarea data-k="s10.deneme"></textarea>
+          <label class="f">Hangi veriyle?</label><textarea data-k="s10.veri" style="min-height:48px"></textarea>
+          <label class="f">Ne fark ettim?</label><textarea data-k="s10.gozlem"></textarea>
+          <label class="f">Fikir çalışıyor mu? Neden?</label><textarea data-k="s10.sonuc" style="min-height:48px"></textarea>
+          <label class="f">Ne değiştirmem gerekir?</label><textarea data-k="s10.degisiklik" style="min-height:48px"></textarea>
+          <label class="f">Bu fikir ne olabilir?</label>
+          <select data-k="s10.potansiyel">
+            <option value="">Seçin…</option>
+            <option>Tez olabilir</option>
+            <option>Makale olabilir</option>
+            <option>Proje olabilir</option>
+            <option>Şimdilik zayıf</option>
+          </select>
+        </div>
+      </section>
+
+      <section class="stage" data-stage="11">
+        <span class="eyebrow">Aşama 11 / 11</span>
+        <h1>Danışmanla paylaşılacak araştırma fikri özeti</h1>
+        <div class="btnrow"><button class="btn acc" id="ozetDoldur" type="button">Önceki aşamalardan otomatik doldur</button></div>
+        <div class="card">
+          <label class="f">Geçici başlık</label><input data-k="s11.baslik">
+          <label class="f">Genel alan</label><input data-k="s11.alan">
+          <label class="f">Daraltılmış konu</label><textarea data-k="s11.konu" style="min-height:48px"></textarea>
+          <label class="f">Problem</label><textarea data-k="s11.problem"></textarea>
+          <label class="f">Literatür boşluğu</label><textarea data-k="s11.bosluk"></textarea>
+          <label class="f">Amaç</label><textarea data-k="s11.amac" style="min-height:48px"></textarea>
+          <label class="f">Ana araştırma sorusu</label><textarea data-k="s11.ana" style="min-height:48px"></textarea>
+          <label class="f">Alt sorular</label><textarea data-k="s11.alt"></textarea>
+          <label class="f">Yöntem ve gerekçesi</label><textarea data-k="s11.yontem" style="min-height:48px"></textarea>
+          <label class="f">Veri kaynağı</label><textarea data-k="s11.veriKaynagi" style="min-height:48px"></textarea>
+          <label class="f">Ön araştırmadan çıkan not</label><textarea data-k="s11.pilotNotu" style="min-height:48px"></textarea>
+          <label class="f">Beklenen katkı</label><textarea data-k="s11.katki"></textarea>
+          <label class="f">İlk kaynakça (her satıra bir kaynak)</label><textarea data-k="s11.kaynakca" style="min-height:110px"></textarea>
+        </div>
+        <div class="btnrow">
+          <button class="btn" id="ozetOnizle" type="button">Önizle</button>
+          <button class="btn acc" id="ozetIndir" type="button">Word olarak indir (.doc)</button>
+          <button class="btn ghost" id="ozetYazdir" type="button">Yazdır / PDF</button>
+        </div>
+        <div id="ozetPreview" class="ozet-preview" style="margin-top:18px; display:none"></div>
+      </section>
+
+      <div class="navrow">
+        <button class="btn ghost" id="prevBtn" type="button">← Önceki aşama</button>
+        <button class="btn" id="nextBtn" type="button">Sonraki aşama →</button>
+      </div>
+    </main>
+  </div>
+</div>
+
+<script type="module">
+// ============================================================
+// TEK DOSYA SÜRÜMÜ — hiçbir harici JS dosyasına bağımlı değil.
+// Önbellek/sürüm uyuşmazlığı sorununu tamamen ortadan kaldırır.
+// ============================================================
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
+import {
+  getFirestore, doc, getDoc, setDoc, collection, getDocs, serverTimestamp, arrayUnion
+} from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
+
+const firebaseConfig = {
+  apiKey: "AIzaSyCZzrEZVbB8ML9ZgmWzV7f30PoQTGsJn90",
+  authDomain: "arastirma-sihirbazi.firebaseapp.com",
+  projectId: "arastirma-sihirbazi",
+  storageBucket: "arastirma-sihirbazi.firebasestorage.app",
+  messagingSenderId: "59546580608",
+  appId: "1:59546580608:web:6b966448fccd3158841865"
+};
+const OPENALEX_MAILTO = "bbasaran@anadolu.edu.tr";
+const app = initializeApp(firebaseConfig);
+const db = getFirestore(app);
+
+const $ = (s) => document.querySelector(s);
+const $$ = (s) => [...document.querySelectorAll(s)];
+const esc = (s) => String(s ?? "").replace(/[&<>"']/g, c => ({ "&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;" }[c]));
+function debounce(fn, ms) { let t; return (...a) => { clearTimeout(t); t = setTimeout(() => fn(...a), ms); }; }
+
+const DEFAULT_OPTIONS = {
+  alanlar: ["Yabancı dil öğretiminde yapay zekâ","Üretken yapay zekâ ile materyal geliştirme","AI destekli yazma becerisi","AI destekli konuşma pratiği","AI avatarlar / sanal konuşma partnerleri","AI çıktılarının pedagojik değerlendirilmesi","Öğretmen adaylarının dijital yeterlikleri","Öğretmenlerin teknoloji kullanımı","AI okuryazarlığı ve eleştirel kullanım","Almanca öğretmen eğitiminde mikro yeterlilikler","Ders kitabı analizi","Ders kitaplarında kültür temsilleri","Ders kitaplarında cinsiyet / meslek temsilleri","Ders kitaplarında aile temsilleri","Kültürlerarası öğrenme","Dil öğreniminde motivasyon","Dil öğreniminde kaygı","Dil öğreniminde öz yeterlik","Okuma becerisi ve metin seçimi","GER / CEFR düzey belirleme","Ölçme ve değerlendirme","Öğrenci özerkliği ve stratejiler","Çok dillilik","Göç, kimlik ve dil öğrenimi","Özel gereksinimli öğrenciler için yabancı dil öğretimi","Müfredat / program / politika analizi"],
+  hedefGruplar: ["Almanca öğretmen adayları", "Lisans öğrencileri", "Hazırlık öğrencileri", "Almanca öğretmenleri", "Akademisyenler", "Ders kitabı kullanıcıları"],
+  beceriler: ["Yazma", "Konuşma", "Okuma", "Dinleme", "Materyal geliştirme", "Değerlendirme", "Kültür / temsil", "Motivasyon / kaygı / öz yeterlik"],
+  araclar: ["ChatGPT / Claude / Gemini", "AI avatar / konuşma botu", "Google Forms / çevrim içi anket", "Ders kitabı / PDF / metin", "Öğrenci ürünleri", "Müfredat veya program belgeleri"],
+  baglamlar: ["Almanca öğretmenliği", "Yabancı dil olarak Almanca", "Türkiye bağlamı", "Öğretmen eğitimi", "Lisans dersi", "Uzaktan / dijital öğrenme ortamı"],
+  veriTurleri: ["Anket", "Görüşme", "Açık uçlu yanıt", "Ders kitabı içeriği", "AI çıktısı", "Öğrenci ürünü", "Gözlem / günlük", "Rubrik puanlaması"],
+  bosluklar: ["Bağlam boşluğu", "Yöntem boşluğu", "Örneklem boşluğu", "Veri boşluğu", "Kuramsal boşluk", "Güncellik boşluğu"],
+  soruKaliplari: ["... öğrencileri / öğretmen adayları ... sürecini nasıl deneyimlemektedir?","Katılımcılar ... hakkında ne düşünmektedir?","Katılımcılar ... aracını hangi amaçlarla ve nasıl kullanmaktadır?","... ile ... arasında nasıl bir fark bulunmaktadır?","... ile ... arasında anlamlı bir ilişki var mıdır?","... süreci hangi aşamalardan oluşmaktadır?","... çıktılarında hangi özellikler, hatalar veya örüntüler öne çıkmaktadır?","... materyallerinde ... nasıl temsil edilmektedir?"],
+  yontemler: ["Nicel", "Nitel", "Karma yöntem", "Doküman analizi", "İçerik analizi", "Söylem analizi", "Deneysel / yarı deneysel", "Rubrik değerlendirme"],
+  pilotSecenekleri: ["Mini anket (10–15 kişi, 5–8 soru)","Kısa görüşme (3–5 kişi, ~10 dk)","Doküman denemesi (2–3 sayfa/etkinlik kodlama)","AI çıktısı denemesi (aynı görev, 2–3 araç)","Literatür mini haritası (10 makale tablosu)","Rubrik denemesi (3–5 çıktı üzerinde)"]
+};
+
+let uid = null, profile = null, OPT = null, data = {}, currentStage = 1;
+const STAGE_COUNT = 11;
+const STAGE_NAMES = ["İlgi alanı seç","Alanı daralt","Problem kur","Anahtar kelime üret","İlk literatürü oku","Boşluğu belirle","Soruları yaz","Yöntemle eşleştir","Yapılabilirlik","Pilot deneme","Fikir özeti"];
+const emailToId = (email) => email.trim().toLowerCase().replace(/[^a-z0-9]/g, "_");
+
+function show(id) {
+  ["authScreen", "waitScreen", "rejectScreen", "appScreen"].forEach(s => $("#" + s).hidden = (s !== id));
+}
+function msg(text, cls = "info") {
+  const el = $("#authMsg");
+  el.className = "msg" + (text ? " " + cls : "");
+  el.textContent = text;
+}
+function setBtnLoading(btn, loading, label) {
+  btn.disabled = loading;
+  btn.textContent = loading ? "Lütfen bekleyin…" : label;
+}
+
+$("#tabLogin").onclick = () => switchTab(true);
+$("#tabRegister").onclick = () => switchTab(false);
+function switchTab(login) {
+  $("#tabLogin").classList.toggle("active", login);
+  $("#tabRegister").classList.toggle("active", !login);
+  $("#loginForm").hidden = !login;
+  $("#registerForm").hidden = login;
+  msg("");
+}
+
+async function findUserByEmail(email) {
+  const target = email.trim().toLowerCase();
+  const snap = await getDocs(collection(db, "users"));
+  for (const d of snap.docs) {
+    const dd = d.data();
+    if ((dd.email || "").trim().toLowerCase() === target) return { id: d.id, data: dd };
+  }
+  return null;
+}
+
+function withTimeout(promise, ms, label) {
+  return Promise.race([
+    promise,
+    new Promise((_, reject) => setTimeout(() => reject(new Error(label + ": sunucudan " + ms/1000 + " saniyede yanıt alınamadı. Sayfayı yenileyip tekrar deneyin.")), ms))
+  ]);
+}
+
+$("#loginForm").onsubmit = async (e) => {
+  e.preventDefault();
+  const email = $("#loginEmail").value.trim();
+  if (!email) { msg("E-posta adresinizi yazın.", "err"); return; }
+  const btn = $("#loginBtn");
+  setBtnLoading(btn, true, "Giriş yap");
+  msg("Giriş yapılıyor…");
+  try {
+    const found = await withTimeout(findUserByEmail(email), 12000, "Kullanıcı arama");
+    if (!found) { msg('Bu e-posta ile kayıt bulunamadı. Önce "Kayıt ol" ile üye olun.', "err"); return; }
+    uid = found.id; profile = found.data;
+    if (profile.status === "approved") {
+      await withTimeout(startApp(), 15000, "Uygulama başlatma");
+    } else if (profile.status === "rejected") { show("rejectScreen"); }
+    else { show("waitScreen"); }
+  } catch (err) {
+    msg("HATA: " + err.message, "err");
+    console.error(err);
+  } finally {
+    setBtnLoading(btn, false, "Giriş yap");
+  }
+};
+
+$("#registerForm").onsubmit = async (e) => {
+  e.preventDefault();
+  const email = $("#regEmail").value.trim();
+  const btn = $("#regBtn");
+  setBtnLoading(btn, true, "Kayıt ol");
+  msg("Kayıt oluşturuluyor…");
+  try {
+    const existing = await withTimeout(findUserByEmail(email), 12000, "Kayıt kontrolü");
+    if (existing) { msg("Bu e-posta zaten kayıtlı. Giriş yapmayı deneyin.", "err"); return; }
+    const id = emailToId(email);
+    await withTimeout(setDoc(doc(db, "users", id), {
+      email,
+      ad: $("#regName").value.trim(),
+      soyad: $("#regSurname").value.trim(),
+      program: $("#regProgram").value.trim(),
+      status: "pending",
+      createdAt: serverTimestamp()
+    }), 12000, "Kayıt yazma");
+    uid = id;
+    profile = { email, ad: $("#regName").value.trim(), soyad: $("#regSurname").value.trim(), status: "pending" };
+    show("waitScreen");
+  } catch (err) {
+    msg("HATA: " + err.message, "err");
+    console.error(err);
+  } finally {
+    setBtnLoading(btn, false, "Kayıt ol");
+  }
+};
+
+["waitLogout", "rejectLogout", "logoutBtn"].forEach(id => {
+  const el = $("#" + id);
+  if (el) el.onclick = () => { uid = null; profile = null; show("authScreen"); };
+});
+$("#waitRefresh").onclick = async () => {
+  if (!profile) return;
+  try {
+    const found = await withTimeout(findUserByEmail(profile.email), 12000, "Durum kontrolü");
+    if (found) {
+      profile = found.data;
+      if (profile.status === "approved") { uid = found.id; await startApp(); }
+      else if (profile.status === "rejected") { show("rejectScreen"); }
+    }
+  } catch (err) { alert("Kontrol başarısız: " + err.message); }
+};
+
+async function loadOptions() {
+  try {
+    const snap = await getDoc(doc(db, "config", "app"));
+    if (snap.exists() && snap.data().options) return { ...DEFAULT_OPTIONS, ...snap.data().options };
+  } catch (e) {}
+  return DEFAULT_OPTIONS;
+}
+
+async function startApp() {
+  OPT = await loadOptions();
+  const snap = await getDoc(doc(db, "submissions", uid));
+  data = snap.exists() ? (snap.data().data || {}) : {};
+  $("#whoAmI").textContent = `${profile.ad} ${profile.soyad}`.trim() || profile.email;
+  buildRail(); buildDynamicUI(); restoreInputs(); renderAlanRows(); renderLitRows(); bindAutosave();
+  goStage(1);
+  show("appScreen");
+}
+
+function buildRail() {
+  const rail = $("#rail");
+  for (let i = 1; i <= STAGE_COUNT; i++) {
+    const b = document.createElement("button");
+    b.className = "stage-btn"; b.dataset.stage = i;
+    b.innerHTML = `<span class="num">${String(i).padStart(2, "0")}</span><span>${esc(STAGE_NAMES[i - 1])}</span><span class="done" hidden>✓</span>`;
+    b.onclick = () => goStage(i);
+    rail.appendChild(b);
+  }
+}
+function goStage(n) {
+  currentStage = n;
+  $$(".stage").forEach(s => s.classList.toggle("visible", +s.dataset.stage === n));
+  $$(".stage-btn").forEach(b => b.classList.toggle("active", +b.dataset.stage === n));
+  $("#prevBtn").disabled = n === 1;
+  $("#nextBtn").disabled = n === STAGE_COUNT;
+  window.scrollTo({ top: 0 });
+  updateProgress();
+}
+$("#prevBtn").onclick = () => goStage(Math.max(1, currentStage - 1));
+$("#nextBtn").onclick = () => goStage(Math.min(STAGE_COUNT, currentStage + 1));
+
+function stageDone(i) {
+  switch (i) {
+    case 1: return (data["s1.alanlar"] || []).length >= 3;
+    case 2: return !!(data["s2.konuCumlesi"] || "").trim();
+    case 3: return !!(data["s3.paragraf"] || "").trim();
+    case 4: return !!((data["s4.konu.en"] || data["s4.konu.tr"] || "").trim());
+    case 5: return (data["s5.kaynaklar"] || []).length >= 1;
+    case 6: return !!(data["s6.paragraf"] || "").trim();
+    case 7: return !!(data["s7.ana"] || "").trim();
+    case 8: return !!(data["s8.yontem"] || "").trim();
+    case 9: return !!(data["s9.veri"] || "").trim();
+    case 10: return !!(data["s10.deneme"] || "").trim();
+    case 11: return !!(data["s11.baslik"] || "").trim();
+  }
+  return false;
+}
+function updateProgress() {
+  let done = 0;
+  $$(".stage-btn").forEach(b => { const ok = stageDone(+b.dataset.stage); b.querySelector(".done").hidden = !ok; if (ok) done++; });
+  const pct = Math.round(done / STAGE_COUNT * 100);
+  $("#progressFill").style.width = pct + "%";
+  $("#progressLabel").textContent = `%${pct} tamamlandı (${done}/${STAGE_COUNT} aşama)`;
+  return pct;
+}
+
+function checkGroup(containerId, key, list, max = 99) {
+  const c = $("#" + containerId);
+  c.innerHTML = "";
+  list.forEach(item => {
+    const l = document.createElement("label");
+    l.innerHTML = `<input type="checkbox" value="${esc(item)}"> <span>${esc(item)}</span>`;
+    const inp = l.querySelector("input");
+    inp.checked = (data[key] || []).includes(item);
+    inp.onchange = () => {
+      let arr = data[key] || [];
+      if (inp.checked) { if (arr.length >= max) { inp.checked = false; alert(`En fazla ${max} seçim yapabilirsiniz.`); return; } arr = [...arr, item]; }
+      else arr = arr.filter(x => x !== item);
+      data[key] = arr;
+      if (key === "s1.alanlar") renderAlanRows();
+      queueSave();
+    };
+    c.appendChild(l);
+  });
+}
+
+function buildDynamicUI() {
+  checkGroup("alanChecks", "s1.alanlar", OPT.alanlar, 5);
+  checkGroup("hedefChecks", "s2.hedef", OPT.hedefGruplar, 2);
+  checkGroup("beceriChecks", "s2.beceri", OPT.beceriler, 2);
+  checkGroup("aracChecks", "s2.arac", OPT.araclar, 2);
+  checkGroup("baglamChecks", "s2.baglam", OPT.baglamlar, 2);
+  checkGroup("veriChecks", "s2.veri", OPT.veriTurleri, 2);
+  checkGroup("pilotChecks", "s10.tur", OPT.pilotSecenekleri, 2);
+
+  const bc = $("#boslukChecks"); bc.innerHTML = "";
+  OPT.bosluklar.forEach((b, i) => {
+    const wrap = document.createElement("div"); wrap.style.marginBottom = "12px";
+    wrap.innerHTML = `<label style="display:flex;gap:8px;font-weight:600;font-size:.88rem"><input type="checkbox" data-bosluk="${esc(b)}"> ${esc(b)}</label><input type="text" data-k="s6.kanit.${i}" placeholder="Kanıt / kaynak…" style="margin-top:4px">`;
+    const inp = wrap.querySelector("input[type=checkbox]");
+    inp.checked = (data["s6.turler"] || []).includes(b);
+    inp.onchange = () => { let arr = data["s6.turler"] || []; arr = inp.checked ? [...arr, b] : arr.filter(x => x !== b); data["s6.turler"] = arr; queueSave(); };
+    bc.appendChild(wrap);
+  });
+
+  const kl = $("#kalipList"); kl.innerHTML = "";
+  OPT.soruKaliplari.forEach(k => {
+    const btn = document.createElement("button");
+    btn.type = "button"; btn.className = "btn ghost sm";
+    btn.style.cssText = "display:block;width:100%;text-align:left;margin:4px 0;font-weight:400";
+    btn.textContent = k;
+    btn.onclick = () => { const ta = document.querySelector('[data-k="s7.ana"]'); ta.value = k; data["s7.ana"] = k; queueSave(); ta.focus(); };
+    kl.appendChild(btn);
+  });
+
+  const ys = $("#yontemSelect");
+  ys.innerHTML = '<option value="">Seçin…</option>' + OPT.yontemler.map(y => `<option>${esc(y)}</option>`).join("");
+
+  const MAP = {
+    "Katılımcılar ne düşünüyor? (görüş)": "Nitel veya nicel → görüşme, açık uçlu form, anket",
+    "Katılımcılar bir ölçeğe ne düzeyde katılıyor?": "Nicel → anket, ölçek",
+    "Uygulama öncesi–sonrası değişim var mı?": "Nicel / deneysel → ön test–son test, performans puanı",
+    "Katılımcılar süreci nasıl deneyimliyor?": "Nitel → görüşme, günlük, gözlem notu",
+    "Hem düzeyi hem nedeni anlamak istiyorum": "Karma yöntem → anket + görüşme",
+    "Ders kitabında / metinde ne var?": "Doküman analizi → metin, görsel, etkinlik, tema kodları",
+    "AI çıktıları nasıl özellikler gösteriyor?": "İçerik analizi / rubrik → AI çıktıları, puanlama rubriği, karşılaştırma",
+    "Bir temsil nasıl kuruluyor?": "İçerik / söylem analizi → ders kitabı, görsel, metin, görev yönergeleri"
+  };
+  document.querySelector('[data-k="s8.tip"]').addEventListener("change", (e) => {
+    const box = $("#yontemOneri"); const v = MAP[e.target.value];
+    box.style.display = v ? "block" : "none";
+    if (v) box.innerHTML = "<b>Önerilen eşleşme:</b> " + esc(v);
+  });
+}
+
+function renderAlanRows() {
+  const tbody = $("#alanRows");
+  const alanlar = data["s1.alanlar"] || []; const detay = data["s1.detay"] || {};
+  tbody.innerHTML = "";
+  if (!alanlar.length) { tbody.innerHTML = '<tr><td colspan="4" class="hint">Henüz alan seçilmedi.</td></tr>'; return; }
+  alanlar.forEach(a => {
+    const d = detay[a] || {}; const tr = document.createElement("tr");
+    tr.innerHTML = `<td><b>${esc(a)}</b></td><td><textarea data-alan="${esc(a)}" data-f="neden">${esc(d.neden || "")}</textarea></td><td><textarea data-alan="${esc(a)}" data-f="sorun">${esc(d.sorun || "")}</textarea></td><td><textarea data-alan="${esc(a)}" data-f="baglam">${esc(d.baglam || "")}</textarea></td>`;
+    tbody.appendChild(tr);
+  });
+  tbody.querySelectorAll("textarea").forEach(ta => ta.addEventListener("input", () => {
+    const det = data["s1.detay"] || {}; det[ta.dataset.alan] = det[ta.dataset.alan] || {};
+    det[ta.dataset.alan][ta.dataset.f] = ta.value; data["s1.detay"] = det; queueSave();
+  }));
+}
+
+$("#komboBtn").onclick = () => {
+  const g = (k) => (data[k] || "").trim(); const combos = [];
+  const push = (parts) => { const p = parts.filter(Boolean); if (p.length >= 2) combos.push(p.map(x => `"${x}"`).join(" AND ")); };
+  ["tr", "en", "de"].forEach(l => {
+    push([g(`s4.konu.${l}`), g(`s4.grup.${l}`)]);
+    push([g(`s4.konu.${l}`), g(`s4.odak.${l}`)]);
+    push([g(`s4.konu.${l}`), g(`s4.grup.${l}`), g(`s4.odak.${l}`)]);
+    push([g(`s4.konu.${l}`), g(`s4.baglam.${l}`)]);
+  });
+  const uniq = [...new Set(combos)]; const el = $("#komboList");
+  if (!uniq.length) { el.innerHTML = '<p class="hint">Önce en az iki hücre doldurun.</p>'; return; }
+  data["s4.kombolar"] = uniq; queueSave();
+  el.innerHTML = "<h3>Denenecek kombinasyonlar</h3>" + uniq.map(c => `<div class="lit-result" style="display:flex;justify-content:space-between;align-items:center;gap:10px"><code style="font-size:.82rem">${esc(c)}</code><button class="btn sm acc" data-q="${esc(c)}" type="button">Bu sorguyla ara →</button></div>`).join("");
+  el.querySelectorAll("button").forEach(b => b.onclick = () => { $("#litQuery").value = b.dataset.q.replace(/"/g, ""); goStage(5); searchLiterature(); });
+};
+
+function reconstructAbstract(inv) {
+  if (!inv) return ""; const words = [];
+  for (const [w, positions] of Object.entries(inv)) positions.forEach(p => words[p] = w);
+  return words.join(" ");
+}
+
+async function searchLiterature() {
+  const q = $("#litQuery").value.trim(); if (!q) return;
+  const box = $("#litResults"); box.innerHTML = '<p class="hint">Aranıyor…</p>';
+  logSearch(q);
+  try {
+    let url = `https://api.openalex.org/works?search=${encodeURIComponent(q)}&per-page=8&sort=relevance_score:desc`;
+    const year = $("#litYear").value;
+    if (year) url += `&filter=from_publication_date:${year}-01-01`;
+    if (OPENALEX_MAILTO) url += `&mailto=${encodeURIComponent(OPENALEX_MAILTO)}`;
+    const res = await fetch(url);
+    if (!res.ok) throw new Error("OpenAlex yanıt vermedi (" + res.status + ")");
+    const json = await res.json(); const works = json.results || [];
+    if (!works.length) { box.innerHTML = '<p class="hint">Sonuç bulunamadı.</p>'; return; }
+    box.innerHTML = works.map((w, i) => {
+      const authors = (w.authorships || []).slice(0, 3).map(a => a.author?.display_name).filter(Boolean).join(", ") + ((w.authorships || []).length > 3 ? " vd." : "");
+      const venue = w.primary_location?.source?.display_name || "";
+      const abs = reconstructAbstract(w.abstract_inverted_index);
+      const link = w.doi || w.primary_location?.landing_page_url || w.id;
+      const oa = w.open_access?.is_oa ? ' · <span style="color:var(--ok);font-weight:700">Açık erişim</span>' : "";
+      return `<div class="lit-result"><h4>${esc(w.title || "Başlıksız")}</h4><div class="meta">${esc(authors)} · ${w.publication_year || "?"} · ${esc(venue)} · Atıf: ${w.cited_by_count ?? 0}${oa}</div>${abs ? `<div class="abs" id="abs${i}">${esc(abs)}</div>` : '<div class="hint">Özet mevcut değil.</div>'}<div class="lit-actions"><a class="btn sm ghost" href="${esc(link)}" target="_blank" rel="noopener">Kaynağa git ↗</a>${abs ? `<button class="btn sm ghost" type="button" data-abs="abs${i}">Özetin tamamı</button>` : ""}<button class="btn sm acc" type="button" data-add="${i}">Notlarıma ekle</button></div></div>`;
+    }).join("");
+    box.querySelectorAll("[data-abs]").forEach(b => b.onclick = () => document.getElementById(b.dataset.abs).classList.toggle("open"));
+    box.querySelectorAll("[data-add]").forEach(b => b.onclick = () => {
+      const w = works[+b.dataset.add];
+      const authors = (w.authorships || []).slice(0, 3).map(a => a.author?.display_name).filter(Boolean).join(", ");
+      addLitRow({ kaynak: `${authors} (${w.publication_year || "?"}). ${w.title || ""}. ${w.primary_location?.source?.display_name || ""}. ${w.doi || ""}`.trim(), amac: "", yontem: "", bulgu: "", anlam: "" });
+      b.textContent = "Eklendi ✓"; b.disabled = true;
+    });
+  } catch (err) { box.innerHTML = `<p class="msg err" style="display:block">Arama başarısız: ${esc(err.message)}</p>`; }
+}
+$("#litSearchBtn").onclick = searchLiterature;
+$("#litQuery").addEventListener("keydown", e => { if (e.key === "Enter") { e.preventDefault(); searchLiterature(); } });
+
+async function logSearch(q) {
+  try { await setDoc(doc(db, "submissions", uid), { aramalar: arrayUnion({ q, t: Date.now() }) }, { merge: true }); } catch (e) {}
+}
+
+function addLitRow(row) { const arr = data["s5.kaynaklar"] || []; arr.push(row); data["s5.kaynaklar"] = arr; renderLitRows(); queueSave(); }
+$("#litAddRow").onclick = () => addLitRow({ kaynak: "", amac: "", yontem: "", bulgu: "", anlam: "" });
+
+function renderLitRows() {
+  const tbody = $("#litRows"); const arr = data["s5.kaynaklar"] || []; tbody.innerHTML = "";
+  if (!arr.length) { tbody.innerHTML = '<tr><td colspan="6" class="hint">Henüz kaynak eklenmedi.</td></tr>'; return; }
+  arr.forEach((r, i) => {
+    const tr = document.createElement("tr");
+    const cell = (f) => `<td><textarea data-i="${i}" data-f="${f}">${esc(r[f] || "")}</textarea></td>`;
+    tr.innerHTML = cell("kaynak") + cell("amac") + cell("yontem") + cell("bulgu") + cell("anlam") + `<td><button class="btn sm danger" type="button" data-del="${i}">✕</button></td>`;
+    tbody.appendChild(tr);
+  });
+  tbody.querySelectorAll("textarea").forEach(ta => ta.addEventListener("input", () => { data["s5.kaynaklar"][+ta.dataset.i][ta.dataset.f] = ta.value; queueSave(); }));
+  tbody.querySelectorAll("[data-del]").forEach(b => b.onclick = () => { data["s5.kaynaklar"].splice(+b.dataset.del, 1); renderLitRows(); queueSave(); });
+}
+
+function restoreInputs() {
+  $$("[data-k]").forEach(el => { if (data[el.dataset.k] != null) el.value = data[el.dataset.k]; });
+  document.querySelector('[data-k="s8.tip"]').dispatchEvent(new Event("change"));
+  if ((data["s4.kombolar"] || []).length) $("#komboBtn").click();
+}
+function bindAutosave() {
+  $$("[data-k]").forEach(el => {
+    el.addEventListener("input", () => { data[el.dataset.k] = el.value; queueSave(); });
+    el.addEventListener("change", () => { data[el.dataset.k] = el.value; queueSave(); });
+  });
+}
+
+const saveState = (cls, text) => { const el = $("#saveState"); el.className = "savestate " + cls; el.textContent = text; };
+const doSave = async () => {
+  saveState("saving", "Kaydediliyor…");
+  try {
+    await setDoc(doc(db, "submissions", uid), { data, ogrenci: `${profile.ad} ${profile.soyad}`.trim(), email: profile.email, program: profile.program || "", progress: updateProgress(), updatedAt: serverTimestamp() }, { merge: true });
+    saveState("saved", "Kaydedildi ✓");
+  } catch (e) { saveState("", "Kaydedilemedi!"); }
+};
+const queueSave = debounce(doSave, 1200);
+
+$("#ozetDoldur").onclick = () => {
+  const set = (k, v) => { if (v && !(data[k] || "").trim()) { data[k] = v; const el = document.querySelector(`[data-k="${k}"]`); if (el) el.value = v; } };
+  set("s11.alan", (data["s1.alanlar"] || [])[0] || "");
+  set("s11.konu", data["s2.konuCumlesi"]); set("s11.problem", data["s3.paragraf"]); set("s11.bosluk", data["s6.paragraf"]);
+  set("s11.ana", data["s7.ana"]);
+  set("s11.alt", [data["s7.alt1"], data["s7.alt2"], data["s7.alt3"]].filter(x => (x || "").trim()).map((s, i) => `${i + 1}. ${s}`).join("\n"));
+  set("s11.yontem", [data["s8.yontem"], data["s8.gerekce"]].filter(Boolean).join(" — "));
+  set("s11.veriKaynagi", data["s8.veriKaynagi"] || data["s9.veri"]);
+  set("s11.pilotNotu", data["s10.gozlem"]);
+  set("s11.kaynakca", (data["s5.kaynaklar"] || []).map((r, i) => `${i + 1}. ${r.kaynak}`).filter(x => x.length > 4).join("\n"));
+  queueSave();
+};
+
+function ozetHTML() {
+  const g = (k) => esc(data[k] || "—").replace(/\n/g, "<br>");
+  const row = (t, k) => `<h3 style="margin:14px 0 2px;font-size:11pt;border-bottom:1px solid #ccc">${t}</h3><p style="margin:2px 0 8px">${g(k)}</p>`;
+  return `<h2>Araştırma Fikri Özeti</h2><p><b>Öğrenci:</b> ${esc(profile.ad + " " + profile.soyad)} &nbsp; <b>Program:</b> ${esc(profile.program || "—")} &nbsp; <b>Tarih:</b> ${new Date().toLocaleDateString("tr-TR")}</p>${row("Geçici başlık", "s11.baslik")}${row("Genel alan", "s11.alan")}${row("Daraltılmış konu", "s11.konu")}${row("Problem", "s11.problem")}${row("Literatür boşluğu", "s11.bosluk")}${row("Amaç", "s11.amac")}${row("Ana araştırma sorusu", "s11.ana")}${row("Alt sorular", "s11.alt")}${row("Yöntem ve gerekçesi", "s11.yontem")}${row("Veri kaynağı", "s11.veriKaynagi")}${row("Ön araştırmadan çıkan not", "s11.pilotNotu")}${row("Beklenen katkı", "s11.katki")}${row("İlk kaynakça", "s11.kaynakca")}<p style="margin-top:16px;font-size:9pt;color:#666">Bu belge kesin tez konusu değil, danışmanla tartışılacak bir başlangıç belgesidir.</p>`;
+}
+$("#ozetOnizle").onclick = () => { const p = $("#ozetPreview"); p.innerHTML = ozetHTML(); p.style.display = "block"; p.scrollIntoView({ behavior: "smooth" }); };
+$("#ozetIndir").onclick = () => {
+  const html = `<html xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:w="urn:schemas-microsoft-com:office:word"><head><meta charset="utf-8"><title>Araştırma Fikri Özeti</title><style>body{font-family:'Times New Roman',serif;font-size:11pt;line-height:1.4}h2{font-size:14pt}</style></head><body>${ozetHTML()}</body></html>`;
+  const blob = new Blob(["\ufeff" + html], { type: "application/msword;charset=utf-8" });
+  const a = document.createElement("a"); a.href = URL.createObjectURL(blob);
+  const ad = `${profile.ad}_${profile.soyad}`.replace(/\s+/g, "_") || "ogrenci";
+  a.download = `Arastirma_Fikri_Ozeti_${ad}.doc`; a.click(); URL.revokeObjectURL(a.href);
+};
+$("#ozetYazdir").onclick = () => { $("#ozetOnizle").click(); setTimeout(() => window.print(), 300); };
+
+// Başlangıç ekranı
+show("authScreen");
+</script>
+</body>
+</html>
