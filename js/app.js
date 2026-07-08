@@ -104,19 +104,27 @@ $("#registerForm").onsubmit = async (e) => {
 });
 $("#waitRefresh").onclick = () => { if (profile) enterWith(profile.email); };
 
+function withTimeout(promise, ms, label) {
+  return Promise.race([
+    promise,
+    new Promise((_, reject) => setTimeout(() => reject(new Error(label + " zaman aşımına uğradı (10sn). İnternet bağlantınızı veya Firestore kurallarını kontrol edin.")), ms))
+  ]);
+}
+
 async function enterWith(email) {
   try {
-    const found = await findUserByEmail(email);
+    const found = await withTimeout(findUserByEmail(email), 10000, "Kullanıcı arama");
     if (!found) {
       msg("Bu e-posta ile kayıt bulunamadı. Önce \"Kayıt ol\" ile üye olun.", "err");
       return;
     }
     uid = found.id;
     profile = found.data;
-    if (profile.status === "approved") { await startApp(); }
+    if (profile.status === "approved") { await withTimeout(startApp(), 15000, "Uygulama başlatma"); }
     else if (profile.status === "rejected") { show("rejectScreen"); }
     else { show("waitScreen"); }
   } catch (err) {
+    console.error("enterWith hata:", err);
     msg("Giriş yapılamadı: " + err.message, "err");
   }
 }
