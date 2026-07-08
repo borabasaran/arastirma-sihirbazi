@@ -288,8 +288,9 @@
 <script type="module">
 // ============================================================
 // REST SÜRÜMÜ — Firebase SDK YOK. Sadece düz fetch() ile
-// Firestore REST API'sine bağlanır. Şifre/e-posta yok; kimlik
-// tarayıcıda (localStorage) saklanır.
+// Firestore REST API'sine bağlanır. SDK'nın canlı-bağlantı
+// (streaming) katmanı bazı ağlarda sessizce takılabiliyor;
+// düz HTTPS istekleri bu sorunu ortadan kaldırır.
 // ============================================================
 const PROJECT_ID = "arastirma-sihirbazi";
 const BASE = `https://firestore.googleapis.com/v1/projects/${PROJECT_ID}/databases/(default)/documents`;
@@ -444,19 +445,42 @@ $("#logoutBtn").onclick = () => {
   }
 })();
 
-async function startApp() {
-  try {
-    const cfg = await restGet("config/app");
-    if (cfg && cfg.options) OPT = { ...DEFAULT_OPTIONS, ...cfg.options };
-  } catch (e) { /* varsayılanlarla devam */ }
-  try {
-    const sub = await restGet(`submissions/${uid}`);
-    data = (sub && sub.data) || {};
-  } catch (e) { data = {}; }
+function openWizardNow() {
   $("#whoAmI").textContent = `${profile.ad} ${profile.soyad}`.trim() || "Öğrenci";
   buildRail(); buildDynamicUI(); restoreInputs(); renderAlanRows(); renderLitRows(); bindAutosave();
   goStage(1);
   show("appScreen");
+}
+
+async function startApp() {
+  // Sihirbazı ANINDA aç — ağ isteklerini bekleme. Veri varsa
+  // arka planda sessizce çekilip ekrana uygulanır.
+  openWizardNow();
+
+  // Arka planda (görünmez şekilde) veri senkronizasyonu dene
+  fetch(`${BASE}/config/app`)
+    .then(r => r.ok ? r.json() : null)
+    .then(json => {
+      if (!json) return;
+      const cfg = fromFields(json.fields);
+      if (cfg && cfg.options) {
+        OPT = { ...DEFAULT_OPTIONS, ...cfg.options };
+        buildDynamicUI(); restoreInputs();
+      }
+    })
+    .catch(() => {});
+
+  fetch(`${BASE}/submissions/${uid}`)
+    .then(r => r.ok ? r.json() : null)
+    .then(json => {
+      if (!json) return;
+      const sub = fromFields(json.fields);
+      if (sub && sub.data && Object.keys(sub.data).length) {
+        data = sub.data;
+        restoreInputs(); renderAlanRows(); renderLitRows(); updateProgress();
+      }
+    })
+    .catch(() => {});
 }
 
 function buildRail() {
