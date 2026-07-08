@@ -5,6 +5,7 @@
 // ============================================================
 import {
   db, doc, getDoc, setDoc, updateDoc, serverTimestamp, arrayUnion,
+  collection, getDocs,
   loadOptions, esc, debounce
 } from "./common.js";
 import { OPENALEX_MAILTO } from "./firebase-config.js";
@@ -60,17 +61,31 @@ $("#loginForm").onsubmit = async (e) => {
   await enterWith(email);
 };
 
+// Tüm kullanıcıları e-postaya göre bulur (eski Firebase Auth kayıtları dahil,
+// çünkü onların belge kimliği e-postadan türetilmemiş, eski rastgele UID'dir).
+async function findUserByEmail(email) {
+  const target = email.trim().toLowerCase();
+  const snap = await getDocs(collection(db, "users"));
+  for (const d of snap.docs) {
+    const data = d.data();
+    if ((data.email || "").trim().toLowerCase() === target) {
+      return { id: d.id, data };
+    }
+  }
+  return null;
+}
+
 $("#registerForm").onsubmit = async (e) => {
   e.preventDefault();
   msg("Kayıt oluşturuluyor…");
   const email = $("#regEmail").value.trim();
-  const id = emailToId(email);
   try {
-    const existing = await getDoc(doc(db, "users", id));
-    if (existing.exists()) {
+    const existing = await findUserByEmail(email);
+    if (existing) {
       msg("Bu e-posta zaten kayıtlı. Giriş yapmayı deneyin.", "err");
       return;
     }
+    const id = emailToId(email);
     await setDoc(doc(db, "users", id), {
       email,
       ad: $("#regName").value.trim(),
@@ -90,15 +105,14 @@ $("#registerForm").onsubmit = async (e) => {
 $("#waitRefresh").onclick = () => { if (profile) enterWith(profile.email); };
 
 async function enterWith(email) {
-  const id = emailToId(email);
   try {
-    const snap = await getDoc(doc(db, "users", id));
-    if (!snap.exists()) {
+    const found = await findUserByEmail(email);
+    if (!found) {
       msg("Bu e-posta ile kayıt bulunamadı. Önce \"Kayıt ol\" ile üye olun.", "err");
       return;
     }
-    uid = id;
-    profile = snap.data();
+    uid = found.id;
+    profile = found.data;
     if (profile.status === "approved") { await startApp(); }
     else if (profile.status === "rejected") { show("rejectScreen"); }
     else { show("waitScreen"); }
