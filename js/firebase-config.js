@@ -1,18 +1,17 @@
 // ============================================================
 // FIREBASE YAPILANDIRMASI
-// Firebase konsolundan (console.firebase.google.com) projenizi
-// oluşturduktan sonra "Project settings > Your apps > Web app"
-// bölümündeki değerleri buraya yapıştırın.
+// arastirma-sihirbazi projesinin web anahtarları.
 // ============================================================
 export const firebaseConfig = {
-  apiKey: "BURAYA_API_KEY",
-  authDomain: "PROJE-ADI.firebaseapp.com",
-  projectId: "PROJE-ADI",
-  storageBucket: "PROJE-ADI.appspot.com",
-  messagingSenderId: "000000000000",
-  appId: "1:000000000000:web:xxxxxxxxxxxxxxxx"
+  apiKey: "AIzaSyCZzrEZVbB8ML9ZgmWzV7f30PoQTGsJn90",
+  authDomain: "arastirma-sihirbazi.firebaseapp.com",
+  projectId: "arastirma-sihirbazi",
+  storageBucket: "arastirma-sihirbazi.firebasestorage.app",
+  messagingSenderId: "59546580608",
+  appId: "1:59546580608:web:6b966448fccd3158841865",
+  measurementId: "G-X686SFZ28B"
 };
 
 // OpenAlex "polite pool" için e-posta (isteğe bağlı ama önerilir;
 // daha hızlı yanıt alırsınız). Kendi e-postanızı yazın.
-export const OPENALEX_MAILTO = "ornek@anadolu.edu.tr";
+export const OPENALEX_MAILTO = "bbasaran@anadolu.edu.tr";
