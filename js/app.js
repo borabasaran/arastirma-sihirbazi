@@ -1,18 +1,18 @@
 // ============================================================
-// Öğrenci uygulaması
+// Öğrenci uygulaması — ŞİFRESİZ SÜRÜM
+// Giriş yalnızca e-posta ile yapılır; kimlik doğrulama Firebase Auth
+// yerine doğrudan Firestore'daki "users" koleksiyonu üzerinden yapılır.
 // ============================================================
 import {
-  auth, db, onAuthStateChanged, signOut,
-  createUserWithEmailAndPassword, signInWithEmailAndPassword, sendPasswordResetEmail,
-  doc, getDoc, setDoc, updateDoc, serverTimestamp, arrayUnion,
-  loadOptions, esc, debounce, authError
+  db, doc, getDoc, setDoc, updateDoc, serverTimestamp, arrayUnion,
+  loadOptions, esc, debounce
 } from "./common.js";
 import { OPENALEX_MAILTO } from "./firebase-config.js";
 
 const $ = (s) => document.querySelector(s);
 const $$ = (s) => [...document.querySelectorAll(s)];
 
-let uid = null;
+let uid = null;          // e-postadan türetilen belge kimliği
 let profile = null;
 let OPT = null;
 let data = {};          // sihirbaz verisi
@@ -24,6 +24,8 @@ const STAGE_NAMES = [
   "Yapılabilirlik", "Pilot deneme", "Fikir özeti"
 ];
 
+const emailToId = (email) => email.trim().toLowerCase().replace(/[^a-z0-9]/g, "_");
+
 // ------------------------------------------------------------
 // EKRAN YÖNETİMİ
 // ------------------------------------------------------------
@@ -33,7 +35,7 @@ function show(id) {
 }
 
 // ------------------------------------------------------------
-// KİMLİK DOĞRULAMA
+// GİRİŞ / KAYIT — sadece e-posta, şifre yok
 // ------------------------------------------------------------
 $("#tabLogin").onclick = () => { switchTab(true); };
 $("#tabRegister").onclick = () => { switchTab(false); };
@@ -52,66 +54,60 @@ function msg(text, cls = "info") {
 
 $("#loginForm").onsubmit = async (e) => {
   e.preventDefault();
+  const email = $("#loginEmail").value.trim();
+  if (!email) { msg("E-posta adresinizi yazın.", "err"); return; }
   msg("Giriş yapılıyor…");
-  try {
-    await signInWithEmailAndPassword(auth, $("#loginEmail").value.trim(), $("#loginPass").value);
-  } catch (err) { msg(authError(err), "err"); }
+  await enterWith(email);
 };
 
 $("#registerForm").onsubmit = async (e) => {
   e.preventDefault();
   msg("Kayıt oluşturuluyor…");
+  const email = $("#regEmail").value.trim();
+  const id = emailToId(email);
   try {
-    const cred = await createUserWithEmailAndPassword(
-      auth, $("#regEmail").value.trim(), $("#regPass").value);
-    await setDoc(doc(db, "users", cred.user.uid), {
-      email: $("#regEmail").value.trim(),
+    const existing = await getDoc(doc(db, "users", id));
+    if (existing.exists()) {
+      msg("Bu e-posta zaten kayıtlı. Giriş yapmayı deneyin.", "err");
+      return;
+    }
+    await setDoc(doc(db, "users", id), {
+      email,
       ad: $("#regName").value.trim(),
       soyad: $("#regSurname").value.trim(),
       program: $("#regProgram").value.trim(),
       status: "pending",
       createdAt: serverTimestamp()
     });
-  } catch (err) { msg(authError(err), "err"); }
-};
-
-$("#forgotBtn").onclick = async () => {
-  const email = $("#loginEmail").value.trim();
-  if (!email) { msg("Önce e-posta adresinizi yazın.", "err"); return; }
-  try {
-    await sendPasswordResetEmail(auth, email);
-    msg("Şifre sıfırlama bağlantısı e-postanıza gönderildi.", "ok");
-  } catch (err) { msg(authError(err), "err"); }
+    await enterWith(email);
+  } catch (err) { msg("Hata: " + err.message, "err"); }
 };
 
 ["waitLogout", "rejectLogout", "logoutBtn"].forEach(id => {
-  $("#" + id).onclick = () => signOut(auth);
+  const el = $("#" + id);
+  if (el) el.onclick = () => { uid = null; profile = null; show("authScreen"); };
 });
-$("#waitRefresh").onclick = () => location.reload();
+$("#waitRefresh").onclick = () => { if (profile) enterWith(profile.email); };
 
-onAuthStateChanged(auth, async (user) => {
-  if (!user) { uid = null; show("authScreen"); return; }
-  uid = user.uid;
+async function enterWith(email) {
+  const id = emailToId(email);
   try {
-    const snap = await getDoc(doc(db, "users", uid));
+    const snap = await getDoc(doc(db, "users", id));
     if (!snap.exists()) {
-      // Kayıt yarım kalmışsa profil oluştur
-      await setDoc(doc(db, "users", uid), {
-        email: user.email, ad: "", soyad: "", program: "",
-        status: "pending", createdAt: serverTimestamp()
-      });
-      show("waitScreen"); return;
+      msg("Bu e-posta ile kayıt bulunamadı. Önce \"Kayıt ol\" ile üye olun.", "err");
+      return;
     }
+    uid = id;
     profile = snap.data();
     if (profile.status === "approved") { await startApp(); }
     else if (profile.status === "rejected") { show("rejectScreen"); }
     else { show("waitScreen"); }
   } catch (err) {
-    console.error(err);
-    msg("Profil okunamadı. Firestore kuralları yüklendi mi? " + err.message, "err");
-    show("authScreen");
+    msg("Giriş yapılamadı: " + err.message, "err");
   }
-});
+}
+
+show("authScreen");
 
 // ------------------------------------------------------------
 // UYGULAMA BAŞLATMA
