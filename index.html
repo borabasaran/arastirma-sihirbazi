@@ -8,65 +8,26 @@
 </head>
 <body>
 
-<!-- ============ GİRİŞ / KAYIT ============ -->
+<!-- ============ BAŞLA (isim, şifre/e-posta yok) ============ -->
 <div id="authScreen" class="authwrap">
   <div class="authcard">
     <span class="mark">ArSi</span>
     <h1>Araştırma Sihirbazı</h1>
-    <p class="muted">Adım adım konu geliştirme platformu. Üyelik danışman onayına tabidir.</p>
-    <div class="tabs">
-      <button id="tabLogin" class="active">Giriş yap</button>
-      <button id="tabRegister">Kayıt ol</button>
-    </div>
+    <p class="muted">Adım adım konu geliştirme platformu.</p>
     <div id="authMsg" class="msg"></div>
 
-    <form id="loginForm">
-      <label class="f">E-posta</label>
-      <input type="email" id="loginEmail" required autocomplete="email">
-      <div class="btnrow">
-        <button type="submit" class="btn acc" id="loginBtn">Giriş yap</button>
-      </div>
-    </form>
-
-    <form id="registerForm" hidden>
+    <form id="startForm">
       <div class="grid2">
         <div><label class="f">Ad</label><input type="text" id="regName" required></div>
         <div><label class="f">Soyad</label><input type="text" id="regSurname" required></div>
       </div>
-      <label class="f">E-posta</label>
-      <input type="email" id="regEmail" required autocomplete="email">
-      <label class="f">Program / anabilim dalı</label>
+      <label class="f">Program / anabilim dalı (isteğe bağlı)</label>
       <input type="text" id="regProgram" placeholder="Örn. Alman Dili Eğitimi Doktora">
       <div class="btnrow">
-        <button type="submit" class="btn acc" id="regBtn">Kayıt ol</button>
+        <button type="submit" class="btn acc" id="startBtn">Başla</button>
       </div>
-      <p class="hint" style="margin-top:10px">Kaydınız oluşturulduktan sonra danışman onayı beklersiniz. Onaylandığında sadece e-postanızla giriş yapabilirsiniz.</p>
+      <p class="hint" style="margin-top:10px">Giriş bilgisi gerekmez. Bu tarayıcıda kaldığınız yerden devam edersiniz.</p>
     </form>
-  </div>
-</div>
-
-<!-- ============ ONAY BEKLEME ============ -->
-<div id="waitScreen" class="authwrap" hidden>
-  <div class="authcard waitcard">
-    <div class="big">⏳</div>
-    <h2>Kaydınız danışman onayı bekliyor</h2>
-    <p class="muted">Danışmanınız kaydınızı onayladığında bu sayfadan giriş yapabileceksiniz.</p>
-    <div class="btnrow" style="justify-content:center">
-      <button class="btn ghost" id="waitRefresh">Durumu yenile</button>
-      <button class="btn" id="waitLogout">Çıkış yap</button>
-    </div>
-  </div>
-</div>
-
-<!-- ============ REDDEDİLDİ ============ -->
-<div id="rejectScreen" class="authwrap" hidden>
-  <div class="authcard waitcard">
-    <div class="big">✖</div>
-    <h2>Kaydınız onaylanmadı</h2>
-    <p class="muted">Ayrıntılı bilgi için danışmanınızla iletişime geçin.</p>
-    <div class="btnrow" style="justify-content:center">
-      <button class="btn" id="rejectLogout">Çıkış yap</button>
-    </div>
   </div>
 </div>
 
@@ -327,9 +288,8 @@
 <script type="module">
 // ============================================================
 // REST SÜRÜMÜ — Firebase SDK YOK. Sadece düz fetch() ile
-// Firestore REST API'sine bağlanır. SDK'nın canlı-bağlantı
-// (streaming) katmanı bazı ağlarda sessizce takılabiliyor;
-// düz HTTPS istekleri bu sorunu ortadan kaldırır.
+// Firestore REST API'sine bağlanır. Şifre/e-posta yok; kimlik
+// tarayıcıda (localStorage) saklanır.
 // ============================================================
 const PROJECT_ID = "arastirma-sihirbazi";
 const BASE = `https://firestore.googleapis.com/v1/projects/${PROJECT_ID}/databases/(default)/documents`;
@@ -420,10 +380,9 @@ const DEFAULT_OPTIONS = {
 let uid = null, profile = null, OPT = DEFAULT_OPTIONS, data = {}, currentStage = 1;
 const STAGE_COUNT = 11;
 const STAGE_NAMES = ["İlgi alanı seç","Alanı daralt","Problem kur","Anahtar kelime üret","İlk literatürü oku","Boşluğu belirle","Soruları yaz","Yöntemle eşleştir","Yapılabilirlik","Pilot deneme","Fikir özeti"];
-const emailToId = (email) => email.trim().toLowerCase().replace(/[^a-z0-9]/g, "_");
 
 function show(id) {
-  ["authScreen", "waitScreen", "rejectScreen", "appScreen"].forEach(s => $("#" + s).hidden = (s !== id));
+  ["authScreen", "appScreen"].forEach(s => $("#" + s).hidden = (s !== id));
 }
 function msg(text, cls = "info") {
   const el = $("#authMsg");
@@ -435,90 +394,55 @@ function setBtnLoading(btn, loading, label) {
   btn.textContent = loading ? "Lütfen bekleyin…" : label;
 }
 
-$("#tabLogin").onclick = () => switchTab(true);
-$("#tabRegister").onclick = () => switchTab(false);
-function switchTab(login) {
-  $("#tabLogin").classList.toggle("active", login);
-  $("#tabRegister").classList.toggle("active", !login);
-  $("#loginForm").hidden = !login;
-  $("#registerForm").hidden = login;
-  msg("");
+// ------------------------------------------------------------
+// BAŞLANGIÇ — şifre/e-posta yok. Tarayıcıda kimlik saklanır.
+// ------------------------------------------------------------
+function newId() {
+  return "u" + Date.now().toString(36) + Math.random().toString(36).slice(2, 8);
 }
 
-async function findUserByEmail(email) {
-  const target = email.trim().toLowerCase();
-  const users = await restList("users");
-  return users.find(u => (u.data.email || "").trim().toLowerCase() === target) || null;
-}
-
-$("#loginForm").onsubmit = async (e) => {
+$("#startForm").onsubmit = async (e) => {
   e.preventDefault();
-  const email = $("#loginEmail").value.trim();
-  if (!email) { msg("E-posta adresinizi yazın.", "err"); return; }
-  const btn = $("#loginBtn");
-  setBtnLoading(btn, true, "Giriş yap");
-  msg("Giriş yapılıyor…");
+  const btn = $("#startBtn");
+  setBtnLoading(btn, true, "Başla");
+  msg("Başlatılıyor…");
   try {
-    const found = await withTimeout(findUserByEmail(email), 10000, "Kullanıcı arama");
-    if (!found) { msg('Bu e-posta ile kayıt bulunamadı. Önce "Kayıt ol" ile üye olun.', "err"); return; }
-    uid = found.id; profile = found.data;
-    if (profile.status === "approved") {
-      await withTimeout(startApp(), 10000, "Uygulama başlatma");
-    } else if (profile.status === "rejected") { show("rejectScreen"); }
-    else { show("waitScreen"); }
-  } catch (err) {
-    msg("HATA: " + err.message, "err");
-    console.error(err);
-  } finally {
-    setBtnLoading(btn, false, "Giriş yap");
-  }
-};
-
-$("#registerForm").onsubmit = async (e) => {
-  e.preventDefault();
-  const email = $("#regEmail").value.trim();
-  const btn = $("#regBtn");
-  setBtnLoading(btn, true, "Kayıt ol");
-  msg("Kayıt oluşturuluyor…");
-  try {
-    const existing = await withTimeout(findUserByEmail(email), 10000, "Kayıt kontrolü");
-    if (existing) { msg("Bu e-posta zaten kayıtlı. Giriş yapmayı deneyin.", "err"); return; }
-    const id = emailToId(email);
-    const newProfile = {
-      email,
+    uid = newId();
+    profile = {
       ad: $("#regName").value.trim(),
       soyad: $("#regSurname").value.trim(),
-      program: $("#regProgram").value.trim(),
-      status: "pending",
-      createdAt: new Date().toISOString()
+      program: $("#regProgram").value.trim()
     };
-    await withTimeout(restSet(`users/${id}`, newProfile), 10000, "Kayıt yazma");
-    uid = id;
-    profile = newProfile;
-    show("waitScreen");
+    localStorage.setItem("arsi_uid", uid);
+    localStorage.setItem("arsi_profile", JSON.stringify(profile));
+    await withTimeout(startApp(), 10000, "Uygulama başlatma");
   } catch (err) {
     msg("HATA: " + err.message, "err");
     console.error(err);
   } finally {
-    setBtnLoading(btn, false, "Kayıt ol");
+    setBtnLoading(btn, false, "Başla");
   }
 };
 
-["waitLogout", "rejectLogout", "logoutBtn"].forEach(id => {
-  const el = $("#" + id);
-  if (el) el.onclick = () => { uid = null; profile = null; show("authScreen"); };
-});
-$("#waitRefresh").onclick = async () => {
-  if (!profile) return;
-  try {
-    const found = await withTimeout(findUserByEmail(profile.email), 10000, "Durum kontrolü");
-    if (found) {
-      profile = found.data;
-      if (profile.status === "approved") { uid = found.id; await startApp(); }
-      else if (profile.status === "rejected") { show("rejectScreen"); }
-    }
-  } catch (err) { alert("Kontrol başarısız: " + err.message); }
+$("#logoutBtn").onclick = () => {
+  localStorage.removeItem("arsi_uid");
+  localStorage.removeItem("arsi_profile");
+  uid = null; profile = null;
+  show("authScreen");
 };
+
+// Sayfa açılışında daha önce başlanmış mı diye bak
+(function initFromLocalStorage() {
+  const savedUid = localStorage.getItem("arsi_uid");
+  const savedProfile = localStorage.getItem("arsi_profile");
+  if (savedUid && savedProfile) {
+    uid = savedUid;
+    try { profile = JSON.parse(savedProfile); } catch (e) { profile = { ad: "", soyad: "" }; }
+    startApp().catch(err => { msg("HATA: " + err.message, "err"); show("authScreen"); });
+  } else {
+    show("authScreen");
+  }
+})();
 
 async function startApp() {
   try {
@@ -529,7 +453,7 @@ async function startApp() {
     const sub = await restGet(`submissions/${uid}`);
     data = (sub && sub.data) || {};
   } catch (e) { data = {}; }
-  $("#whoAmI").textContent = `${profile.ad} ${profile.soyad}`.trim() || profile.email;
+  $("#whoAmI").textContent = `${profile.ad} ${profile.soyad}`.trim() || "Öğrenci";
   buildRail(); buildDynamicUI(); restoreInputs(); renderAlanRows(); renderLitRows(); bindAutosave();
   goStage(1);
   show("appScreen");
@@ -766,7 +690,6 @@ const doSave = async () => {
     await restSet(`submissions/${uid}`, {
       data,
       ogrenci: `${profile.ad} ${profile.soyad}`.trim(),
-      email: profile.email,
       program: profile.program || "",
       progress: updateProgress(),
       updatedAt: new Date().toISOString(),
@@ -804,9 +727,6 @@ $("#ozetIndir").onclick = () => {
   a.download = `Arastirma_Fikri_Ozeti_${ad}.doc`; a.click(); URL.revokeObjectURL(a.href);
 };
 $("#ozetYazdir").onclick = () => { $("#ozetOnizle").click(); setTimeout(() => window.print(), 300); };
-
-// Başlangıç ekranı
-show("authScreen");
 </script>
 
 </body>
