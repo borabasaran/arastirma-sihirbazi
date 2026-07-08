@@ -1,0 +1,199 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Danışman Paneli — Araştırma Sihirbazı</title>
+<link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+
+<div class="topbar">
+  <span class="mark">DANIŞMAN PANELİ</span>
+  <span class="title">Araştırma Sihirbazı — Danışman Paneli</span>
+  <span class="spacer"></span>
+  <button class="btn sm ghost" style="border-color:#fff;color:#fff" onclick="location.reload()">Yenile</button>
+</div>
+
+<div class="panel-tabs">
+  <button data-tab="ogrenciler" class="active">Öğrenciler</button>
+  <button data-tab="calismalar">Çalışmalar</button>
+  <button data-tab="istatistik">İstatistikler</button>
+</div>
+
+<div class="panel-content">
+  <section id="tab-ogrenciler">
+    <h2>Kayıt onayları ve kullanıcılar</h2>
+    <p class="muted">Onaylanan öğrenciler sihirbazı kullanmaya başlar.</p>
+    <div id="userList"><p class="hint">Yükleniyor…</p></div>
+  </section>
+
+  <section id="tab-calismalar" hidden>
+    <h2>Öğrenci çalışmaları</h2>
+    <div class="btnrow"><button class="btn ghost sm" id="csvBtn">CSV olarak indir</button></div>
+    <div id="subList"></div>
+  </section>
+
+  <section id="tab-istatistik" hidden>
+    <h2>İstatistikler</h2>
+    <div class="statgrid" id="statCards"></div>
+    <div class="card"><h3>En çok seçilen ilgi alanları</h3><div id="alanStats"></div></div>
+    <div class="card"><h3>Yöntem tercihleri</h3><div id="yontemStats"></div></div>
+  </section>
+</div>
+
+<div class="modal-bg" id="modalBg">
+  <div class="modal">
+    <button class="btn sm ghost close" id="modalClose">Kapat ✕</button>
+    <div id="modalBody"></div>
+  </div>
+</div>
+
+<script type="module">
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
+import {
+  getFirestore, doc, getDoc, updateDoc, deleteDoc, collection, getDocs
+} from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
+
+const firebaseConfig = {
+  apiKey: "AIzaSyCZzrEZVbB8ML9ZgmWzV7f30PoQTGsJn90",
+  authDomain: "arastirma-sihirbazi.firebaseapp.com",
+  projectId: "arastirma-sihirbazi",
+  storageBucket: "arastirma-sihirbazi.firebasestorage.app",
+  messagingSenderId: "59546580608",
+  appId: "1:59546580608:web:6b966448fccd3158841865"
+};
+const app = initializeApp(firebaseConfig);
+const db = getFirestore(app);
+
+const $ = (s) => document.querySelector(s);
+const $$ = (s) => [...document.querySelectorAll(s)];
+const esc = (s) => String(s ?? "").replace(/[&<>"']/g, c => ({ "&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;" }[c]));
+const fmtDate = (ts) => { if (!ts) return "—"; const d = ts.toDate ? ts.toDate() : new Date(ts); return d.toLocaleString("tr-TR",{dateStyle:"medium",timeStyle:"short"}); };
+
+let users = [], subs = [];
+
+// Sekmeler
+$$(".panel-tabs button").forEach(b => b.onclick = () => {
+  $$(".panel-tabs button").forEach(x => x.classList.toggle("active", x === b));
+  ["ogrenciler","calismalar","istatistik"].forEach(t => $("#tab-"+t).hidden = (t !== b.dataset.tab));
+});
+
+const BADGE = { pending:["pending","Onay bekliyor"], approved:["approved","Onaylı"], rejected:["rejected","Reddedildi"] };
+
+async function loadAll() {
+  try {
+    const [uSnap, sSnap] = await Promise.all([
+      getDocs(collection(db,"users")),
+      getDocs(collection(db,"submissions"))
+    ]);
+    users = uSnap.docs.map(d => ({ id:d.id, ...d.data() }));
+    subs = sSnap.docs.map(d => ({ id:d.id, ...d.data() }));
+    renderUsers(); renderSubs(); renderStats();
+  } catch (err) {
+    $("#userList").innerHTML = '<p class="msg err" style="display:block">Veriler yüklenemedi: '+esc(err.message)+'<br><br>Firebase → Firestore → Rules bölümüne şu kuralın yüklü ve Publish edilmiş olduğundan emin olun: <code>allow read, write: if true;</code></p>';
+  }
+}
+
+function renderUsers() {
+  const order = { pending:0, approved:1, rejected:2 };
+  const sorted = [...users].sort((a,b)=>(order[a.status]??3)-(order[b.status]??3));
+  $("#userList").innerHTML = `<table class="t"><thead><tr>
+    <th>Ad Soyad</th><th>E-posta</th><th>Program</th><th>Kayıt</th><th>Durum</th><th style="width:220px">İşlem</th>
+    </tr></thead><tbody>` +
+    (sorted.length ? sorted.map(u => {
+      const [cls,lab] = BADGE[u.status] || ["",u.status];
+      return `<tr>
+        <td><b>${esc(u.ad)} ${esc(u.soyad)}</b></td>
+        <td>${esc(u.email)}</td>
+        <td>${esc(u.program || "—")}</td>
+        <td>${fmtDate(u.createdAt)}</td>
+        <td><span class="badge ${cls}">${lab}</span></td>
+        <td>
+          ${u.status!=="approved" ? `<button class="btn sm ok" data-act="approve" data-id="${u.id}">Onayla</button>` : ""}
+          ${u.status!=="rejected" ? `<button class="btn sm danger" data-act="reject" data-id="${u.id}">Reddet</button>` : ""}
+          <button class="btn sm ghost" data-act="delete" data-id="${u.id}">Sil</button>
+        </td></tr>`;
+    }).join("") : '<tr><td colspan="6" class="hint">Henüz kayıtlı kullanıcı yok.</td></tr>') +
+    "</tbody></table>";
+
+  $("#userList").querySelectorAll("[data-act]").forEach(b => b.onclick = async () => {
+    const u = users.find(x => x.id === b.dataset.id);
+    if (b.dataset.act === "delete") {
+      if (!confirm(`${u.email} kullanıcısını silmek istiyor musunuz?`)) return;
+      await deleteDoc(doc(db,"users",u.id));
+    } else {
+      const status = b.dataset.act === "approve" ? "approved" : "rejected";
+      await updateDoc(doc(db,"users",u.id), { status });
+    }
+    await loadAll();
+  });
+}
+
+function renderSubs() {
+  const sorted = [...subs].sort((a,b)=>(b.updatedAt?.seconds||0)-(a.updatedAt?.seconds||0));
+  $("#subList").innerHTML = `<table class="t"><thead><tr>
+    <th>Öğrenci</th><th>Daraltılmış konu</th><th>İlerleme</th><th>Son güncelleme</th><th></th>
+    </tr></thead><tbody>` +
+    (sorted.length ? sorted.map(s => `<tr>
+      <td><b>${esc(s.ogrenci || s.email || s.id)}</b><br><small class="muted">${esc(s.email||"")}</small></td>
+      <td style="max-width:340px">${esc((s.data?.["s2.konuCumlesi"] || "—").slice(0,140))}</td>
+      <td><b>%${s.progress ?? 0}</b></td>
+      <td>${fmtDate(s.updatedAt)}</td>
+      <td><button class="btn sm" data-view="${s.id}">Görüntüle</button></td>
+    </tr>`).join("") : '<tr><td colspan="5" class="hint">Henüz çalışma yok.</td></tr>') +
+    "</tbody></table>";
+  $("#subList").querySelectorAll("[data-view]").forEach(b => b.onclick = () =>
+    openDetail(subs.find(x => x.id === b.dataset.view)));
+}
+
+const SEC = [
+  ["1. İlgi alanları", d => (d["s1.alanlar"]||[]).join("; ")],
+  ["2. Daraltılmış konu", d => d["s2.konuCumlesi"]],
+  ["3. Problem", d => d["s3.paragraf"]],
+  ["6. Boşluk", d => d["s6.paragraf"]],
+  ["7. Ana soru", d => d["s7.ana"]],
+  ["8. Yöntem", d => [d["s8.yontem"],d["s8.veriKaynagi"],d["s8.gerekce"]].filter(Boolean).join(" — ")],
+  ["11. Geçici başlık", d => d["s11.baslik"]],
+  ["11. Amaç", d => d["s11.amac"]],
+  ["11. İlk kaynakça", d => d["s11.kaynakca"]]
+];
+
+function openDetail(s) {
+  const d = s.data || {};
+  $("#modalBody").innerHTML = `<h2>${esc(s.ogrenci || s.email || "")}</h2>
+    <p class="muted">%${s.progress ?? 0} ilerleme · son güncelleme ${fmtDate(s.updatedAt)}</p><div class="ozet-view">` +
+    SEC.map(([t,f]) => { const v=(f(d)||"").trim(); return v ? `<h4>${t}</h4><p>${esc(v)}</p>` : ""; }).join("") +
+    "</div>";
+  $("#modalBg").classList.add("open");
+}
+$("#modalClose").onclick = () => $("#modalBg").classList.remove("open");
+$("#modalBg").onclick = (e) => { if (e.target.id === "modalBg") $("#modalBg").classList.remove("open"); };
+
+$("#csvBtn").onclick = () => {
+  const head = ["Öğrenci","E-posta","İlerleme %","Daraltılmış konu","Ana soru","Yöntem","Geçici başlık"];
+  const q = (v) => '"'+String(v??"").replace(/"/g,'""').replace(/\n/g," ")+'"';
+  const rows = subs.map(s => { const d=s.data||{}; return [s.ogrenci,s.email,s.progress??0,d["s2.konuCumlesi"],d["s7.ana"],d["s8.yontem"],d["s11.baslik"]].map(q).join(";"); });
+  const blob = new Blob(["\ufeff"+head.map(q).join(";")+"\n"+rows.join("\n")], { type:"text/csv;charset=utf-8" });
+  const a = document.createElement("a"); a.href = URL.createObjectURL(blob); a.download = "calismalar.csv"; a.click(); URL.revokeObjectURL(a.href);
+};
+
+function countBy(list){ const m={}; list.forEach(x=>{if(x)m[x]=(m[x]||0)+1;}); return Object.entries(m).sort((a,b)=>b[1]-a[1]); }
+function bars(el,pairs,top=8){ const max=pairs[0]?.[1]||1; $(el).innerHTML = pairs.length ? pairs.slice(0,top).map(([k,v])=>`<div class="bar"><span class="lab">${esc(k)}</span><span class="track"><span class="fill" style="width:${Math.round(v/max*100)}%;display:block"></span></span><span class="val">${v}</span></div>`).join("") : '<p class="hint">Veri yok.</p>'; }
+
+function renderStats() {
+  const approved = users.filter(u=>u.status==="approved").length;
+  const pending = users.filter(u=>u.status==="pending").length;
+  const avg = subs.length ? Math.round(subs.reduce((n,s)=>n+(s.progress||0),0)/subs.length) : 0;
+  $("#statCards").innerHTML = [
+    [users.length,"Toplam kayıt"],[pending,"Onay bekleyen"],[approved,"Onaylı öğrenci"],
+    [subs.length,"Başlanan çalışma"],["%"+avg,"Ortalama ilerleme"]
+  ].map(([n,l])=>`<div class="stat"><div class="n">${n}</div><div class="l">${l}</div></div>`).join("");
+  bars("#alanStats", countBy(subs.flatMap(s=>s.data?.["s1.alanlar"]||[])));
+  bars("#yontemStats", countBy(subs.map(s=>s.data?.["s8.yontem"])));
+}
+
+loadAll();
+</script>
+</body>
+</html>
