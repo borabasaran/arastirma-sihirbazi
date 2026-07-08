@@ -34,10 +34,20 @@ const normEmail = (e) => String(e || "").trim().toLowerCase();
 
 onAuthStateChanged(auth, async (user) => {
   if (!user) { $("#authScreen").hidden = false; $("#panelScreen").hidden = true; return; }
-  appCfg = await getAppConfig();
-  const advisors = (appCfg?.advisorEmails || []).map(normEmail);
-  if (!advisors.includes(normEmail(user.email))) {
-    msg("Bu hesap danışman olarak yetkilendirilmemiş: " + user.email, "err");
+  // config/app belgesini doğrudan oku (yetki listesi burada)
+  let advisors = [];
+  try {
+    const snap = await getDoc(doc(db, "config", "app"));
+    if (snap.exists()) advisors = (snap.data().advisorEmails || []).map(normEmail);
+    appCfg = snap.exists() ? snap.data() : {};
+  } catch (err) {
+    msg("Yetki listesi okunamadı: " + err.message + " (Firestore kuralları / bağlantı)", "err");
+    await signOut(auth);
+    return;
+  }
+  const me = normEmail(user.email);
+  if (!advisors.includes(me)) {
+    msg("Yetkili değil. Giriş: [" + me + "] · Liste: [" + advisors.join(", ") + "]", "err");
     await signOut(auth);
     return;
   }
