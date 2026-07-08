@@ -32,25 +32,25 @@ $("#logoutBtn").onclick = () => signOut(auth);
 // E-postaları büyük/küçük harf ve boşluk farkından bağımsız karşılaştır
 const normEmail = (e) => String(e || "").trim().toLowerCase();
 
+// Yetkili danışman e-postaları — doğrudan koda gömülü (veritabanına bağımlı değil).
+// Yeni danışman eklemek için bu listeye satır ekleyin.
+const ADVISOR_EMAILS = [
+  "bbasaran@anadolu.edu.tr"
+].map(normEmail);
+
 onAuthStateChanged(auth, async (user) => {
   if (!user) { $("#authScreen").hidden = false; $("#panelScreen").hidden = true; return; }
-  // config/app belgesini doğrudan oku (yetki listesi burada)
-  let advisors = [];
+  const me = normEmail(user.email);
+  if (!ADVISOR_EMAILS.includes(me)) {
+    msg("Bu hesap danışman olarak yetkilendirilmemiş: " + user.email, "err");
+    await signOut(auth);
+    return;
+  }
+  // config/app varsa seçenek listelerini oku (yoksa varsayılanlar kullanılır)
   try {
     const snap = await getDoc(doc(db, "config", "app"));
-    if (snap.exists()) advisors = (snap.data().advisorEmails || []).map(normEmail);
     appCfg = snap.exists() ? snap.data() : {};
-  } catch (err) {
-    msg("Yetki listesi okunamadı: " + err.message + " (Firestore kuralları / bağlantı)", "err");
-    await signOut(auth);
-    return;
-  }
-  const me = normEmail(user.email);
-  if (!advisors.includes(me)) {
-    msg("Yetkili değil. Giriş: [" + me + "] · Liste: [" + advisors.join(", ") + "]", "err");
-    await signOut(auth);
-    return;
-  }
+  } catch (err) { appCfg = {}; }
   $("#whoAmI").textContent = user.email;
   $("#authScreen").hidden = true;
   $("#panelScreen").hidden = false;
@@ -279,7 +279,7 @@ function renderOptions() {
 $("#saveOptions").onclick = async () => {
   const lines = (el) => $("#" + el).value.split("\n").map(s => s.trim()).filter(Boolean);
   const advisorEmails = lines("optAdvisors");
-  if (!advisorEmails.map(normEmail).includes(normEmail(auth.currentUser.email))) {
+  if (!ADVISOR_EMAILS.includes(normEmail(auth.currentUser.email)) && !advisorEmails.map(normEmail).includes(normEmail(auth.currentUser.email))) {
     if (!confirm("Uyarı: kendi e-postanız danışman listesinde yok; kaydederseniz panele erişiminizi kaybedersiniz. Yine de devam edilsin mi?")) return;
   }
   const options = {};
