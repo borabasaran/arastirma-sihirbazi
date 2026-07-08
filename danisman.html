@@ -8,20 +8,13 @@
 </head>
 <body>
 
-<!-- GİRİŞ -->
+<!-- GİRİŞ (artık kullanılmıyor; panel doğrudan açılır) -->
 <div id="authScreen" class="authwrap" hidden>
   <div class="authcard">
     <span class="mark">DANIŞMAN PANELİ</span>
     <h1>Yönetici girişi</h1>
     <p class="muted">Bu panele yalnızca yetkili danışman hesapları erişebilir.</p>
     <div id="authMsg" class="msg"></div>
-    <form id="loginForm">
-      <label class="f">E-posta</label>
-      <input type="email" id="loginEmail" required autocomplete="email">
-      <label class="f">Şifre</label>
-      <input type="password" id="loginPass" required autocomplete="current-password">
-      <div class="btnrow"><button type="submit" class="btn acc">Giriş yap</button></div>
-    </form>
   </div>
 </div>
 
@@ -32,7 +25,7 @@
     <span class="title">Araştırma Konusu Geliştirme Sihirbazı</span>
     <span class="spacer"></span>
     <span class="who" id="whoAmI"></span>
-    <button class="btn sm ghost" style="border-color:#fff;color:#fff" id="logoutBtn">Çıkış</button>
+    <button class="btn sm ghost" style="border-color:#fff;color:#fff" id="logoutBtn">Yenile</button>
   </div>
   <div class="panel-tabs">
     <button data-tab="ogrenciler" class="active">Öğrenciler</button>
@@ -72,7 +65,7 @@
       <h2>Seçenek listeleri ve yetkiler</h2>
       <p class="muted">Her satır bir seçenektir. Başka alanlardan meslektaşlar kullanacaksa alan havuzunu buradan kendi disiplinlerine göre düzenleyebilirsiniz; öğrenci ekranı otomatik güncellenir.</p>
       <div class="card">
-        <h3>Danışman e-postaları <span class="hint">(panele erişebilecek hesaplar, her satıra bir e-posta)</span></h3>
+        <h3>Danışman e-postaları <span class="hint">(bilgi amaçlı; e-posta bildirimleri için)</span></h3>
         <textarea id="optAdvisors" style="min-height:70px"></textarea>
       </div>
       <div class="grid2">
@@ -102,6 +95,6 @@
   </div>
 </div>
 
-<script type="module" src="js/panel.js?v=20260708b"></script>
+<script type="module" src="js/panel.js?v=20260708c"></script>
 </body>
 </html>
