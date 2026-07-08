@@ -326,30 +326,83 @@
 
 <script type="module">
 // ============================================================
-// TEK DOSYA SÜRÜMÜ — hiçbir harici JS dosyasına bağımlı değil.
-// Önbellek/sürüm uyuşmazlığı sorununu tamamen ortadan kaldırır.
+// REST SÜRÜMÜ — Firebase SDK YOK. Sadece düz fetch() ile
+// Firestore REST API'sine bağlanır. SDK'nın canlı-bağlantı
+// (streaming) katmanı bazı ağlarda sessizce takılabiliyor;
+// düz HTTPS istekleri bu sorunu ortadan kaldırır.
 // ============================================================
-import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
-import {
-  getFirestore, doc, getDoc, setDoc, collection, getDocs, serverTimestamp, arrayUnion
-} from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
-
-const firebaseConfig = {
-  apiKey: "AIzaSyCZzrEZVbB8ML9ZgmWzV7f30PoQTGsJn90",
-  authDomain: "arastirma-sihirbazi.firebaseapp.com",
-  projectId: "arastirma-sihirbazi",
-  storageBucket: "arastirma-sihirbazi.firebasestorage.app",
-  messagingSenderId: "59546580608",
-  appId: "1:59546580608:web:6b966448fccd3158841865"
-};
+const PROJECT_ID = "arastirma-sihirbazi";
+const BASE = `https://firestore.googleapis.com/v1/projects/${PROJECT_ID}/databases/(default)/documents`;
 const OPENALEX_MAILTO = "bbasaran@anadolu.edu.tr";
-const app = initializeApp(firebaseConfig);
-const db = getFirestore(app);
 
 const $ = (s) => document.querySelector(s);
 const $$ = (s) => [...document.querySelectorAll(s)];
 const esc = (s) => String(s ?? "").replace(/[&<>"']/g, c => ({ "&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;" }[c]));
 function debounce(fn, ms) { let t; return (...a) => { clearTimeout(t); t = setTimeout(() => fn(...a), ms); }; }
+
+// ---- Firestore REST <-> JS dönüştürücüleri ----
+function toValue(v) {
+  if (v === undefined || v === null) return { nullValue: null };
+  if (typeof v === "string") return { stringValue: v };
+  if (typeof v === "boolean") return { booleanValue: v };
+  if (typeof v === "number") return Number.isInteger(v) ? { integerValue: String(v) } : { doubleValue: v };
+  if (Array.isArray(v)) return { arrayValue: { values: v.map(toValue) } };
+  if (typeof v === "object") return { mapValue: { fields: toFields(v) } };
+  return { stringValue: String(v) };
+}
+function toFields(obj) {
+  const out = {};
+  for (const [k, v] of Object.entries(obj)) out[k] = toValue(v);
+  return out;
+}
+function fromValue(val) {
+  if (!val) return null;
+  if ("stringValue" in val) return val.stringValue;
+  if ("integerValue" in val) return parseInt(val.integerValue, 10);
+  if ("doubleValue" in val) return val.doubleValue;
+  if ("booleanValue" in val) return val.booleanValue;
+  if ("timestampValue" in val) return val.timestampValue;
+  if ("nullValue" in val) return null;
+  if ("arrayValue" in val) return (val.arrayValue.values || []).map(fromValue);
+  if ("mapValue" in val) return fromFields(val.mapValue.fields || {});
+  return null;
+}
+function fromFields(fields) {
+  const out = {};
+  for (const [k, v] of Object.entries(fields || {})) out[k] = fromValue(v);
+  return out;
+}
+function docIdFromName(name) { return name.split("/").pop(); }
+
+// ---- REST yardımcıları (hepsi zaman aşımlı) ----
+function withTimeout(promise, ms, label) {
+  return Promise.race([
+    promise,
+    new Promise((_, reject) => setTimeout(() => reject(new Error(label + ": " + ms/1000 + " saniyede yanıt alınamadı. İnternet bağlantınızı kontrol edip tekrar deneyin.")), ms))
+  ]);
+}
+async function restList(collectionName) {
+  const res = await fetch(`${BASE}/${collectionName}?pageSize=300`);
+  if (!res.ok) throw new Error("Sunucu hatası (" + res.status + ")");
+  const json = await res.json();
+  return (json.documents || []).map(d => ({ id: docIdFromName(d.name), data: fromFields(d.fields) }));
+}
+async function restGet(path) {
+  const res = await fetch(`${BASE}/${path}`);
+  if (res.status === 404) return null;
+  if (!res.ok) throw new Error("Sunucu hatası (" + res.status + ")");
+  const json = await res.json();
+  return fromFields(json.fields);
+}
+async function restSet(path, dataObj) {
+  const res = await fetch(`${BASE}/${path}`, {
+    method: "PATCH",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ fields: toFields(dataObj) })
+  });
+  if (!res.ok) throw new Error("Yazma hatası (" + res.status + ")");
+  return res.json();
+}
 
 const DEFAULT_OPTIONS = {
   alanlar: ["Yabancı dil öğretiminde yapay zekâ","Üretken yapay zekâ ile materyal geliştirme","AI destekli yazma becerisi","AI destekli konuşma pratiği","AI avatarlar / sanal konuşma partnerleri","AI çıktılarının pedagojik değerlendirilmesi","Öğretmen adaylarının dijital yeterlikleri","Öğretmenlerin teknoloji kullanımı","AI okuryazarlığı ve eleştirel kullanım","Almanca öğretmen eğitiminde mikro yeterlilikler","Ders kitabı analizi","Ders kitaplarında kültür temsilleri","Ders kitaplarında cinsiyet / meslek temsilleri","Ders kitaplarında aile temsilleri","Kültürlerarası öğrenme","Dil öğreniminde motivasyon","Dil öğreniminde kaygı","Dil öğreniminde öz yeterlik","Okuma becerisi ve metin seçimi","GER / CEFR düzey belirleme","Ölçme ve değerlendirme","Öğrenci özerkliği ve stratejiler","Çok dillilik","Göç, kimlik ve dil öğrenimi","Özel gereksinimli öğrenciler için yabancı dil öğretimi","Müfredat / program / politika analizi"],
@@ -364,7 +417,7 @@ const DEFAULT_OPTIONS = {
   pilotSecenekleri: ["Mini anket (10–15 kişi, 5–8 soru)","Kısa görüşme (3–5 kişi, ~10 dk)","Doküman denemesi (2–3 sayfa/etkinlik kodlama)","AI çıktısı denemesi (aynı görev, 2–3 araç)","Literatür mini haritası (10 makale tablosu)","Rubrik denemesi (3–5 çıktı üzerinde)"]
 };
 
-let uid = null, profile = null, OPT = null, data = {}, currentStage = 1;
+let uid = null, profile = null, OPT = DEFAULT_OPTIONS, data = {}, currentStage = 1;
 const STAGE_COUNT = 11;
 const STAGE_NAMES = ["İlgi alanı seç","Alanı daralt","Problem kur","Anahtar kelime üret","İlk literatürü oku","Boşluğu belirle","Soruları yaz","Yöntemle eşleştir","Yapılabilirlik","Pilot deneme","Fikir özeti"];
 const emailToId = (email) => email.trim().toLowerCase().replace(/[^a-z0-9]/g, "_");
@@ -394,19 +447,8 @@ function switchTab(login) {
 
 async function findUserByEmail(email) {
   const target = email.trim().toLowerCase();
-  const snap = await getDocs(collection(db, "users"));
-  for (const d of snap.docs) {
-    const dd = d.data();
-    if ((dd.email || "").trim().toLowerCase() === target) return { id: d.id, data: dd };
-  }
-  return null;
-}
-
-function withTimeout(promise, ms, label) {
-  return Promise.race([
-    promise,
-    new Promise((_, reject) => setTimeout(() => reject(new Error(label + ": sunucudan " + ms/1000 + " saniyede yanıt alınamadı. Sayfayı yenileyip tekrar deneyin.")), ms))
-  ]);
+  const users = await restList("users");
+  return users.find(u => (u.data.email || "").trim().toLowerCase() === target) || null;
 }
 
 $("#loginForm").onsubmit = async (e) => {
@@ -417,11 +459,11 @@ $("#loginForm").onsubmit = async (e) => {
   setBtnLoading(btn, true, "Giriş yap");
   msg("Giriş yapılıyor…");
   try {
-    const found = await withTimeout(findUserByEmail(email), 12000, "Kullanıcı arama");
+    const found = await withTimeout(findUserByEmail(email), 10000, "Kullanıcı arama");
     if (!found) { msg('Bu e-posta ile kayıt bulunamadı. Önce "Kayıt ol" ile üye olun.', "err"); return; }
     uid = found.id; profile = found.data;
     if (profile.status === "approved") {
-      await withTimeout(startApp(), 15000, "Uygulama başlatma");
+      await withTimeout(startApp(), 10000, "Uygulama başlatma");
     } else if (profile.status === "rejected") { show("rejectScreen"); }
     else { show("waitScreen"); }
   } catch (err) {
@@ -439,19 +481,20 @@ $("#registerForm").onsubmit = async (e) => {
   setBtnLoading(btn, true, "Kayıt ol");
   msg("Kayıt oluşturuluyor…");
   try {
-    const existing = await withTimeout(findUserByEmail(email), 12000, "Kayıt kontrolü");
+    const existing = await withTimeout(findUserByEmail(email), 10000, "Kayıt kontrolü");
     if (existing) { msg("Bu e-posta zaten kayıtlı. Giriş yapmayı deneyin.", "err"); return; }
     const id = emailToId(email);
-    await withTimeout(setDoc(doc(db, "users", id), {
+    const newProfile = {
       email,
       ad: $("#regName").value.trim(),
       soyad: $("#regSurname").value.trim(),
       program: $("#regProgram").value.trim(),
       status: "pending",
-      createdAt: serverTimestamp()
-    }), 12000, "Kayıt yazma");
+      createdAt: new Date().toISOString()
+    };
+    await withTimeout(restSet(`users/${id}`, newProfile), 10000, "Kayıt yazma");
     uid = id;
-    profile = { email, ad: $("#regName").value.trim(), soyad: $("#regSurname").value.trim(), status: "pending" };
+    profile = newProfile;
     show("waitScreen");
   } catch (err) {
     msg("HATA: " + err.message, "err");
@@ -468,7 +511,7 @@ $("#registerForm").onsubmit = async (e) => {
 $("#waitRefresh").onclick = async () => {
   if (!profile) return;
   try {
-    const found = await withTimeout(findUserByEmail(profile.email), 12000, "Durum kontrolü");
+    const found = await withTimeout(findUserByEmail(profile.email), 10000, "Durum kontrolü");
     if (found) {
       profile = found.data;
       if (profile.status === "approved") { uid = found.id; await startApp(); }
@@ -477,18 +520,15 @@ $("#waitRefresh").onclick = async () => {
   } catch (err) { alert("Kontrol başarısız: " + err.message); }
 };
 
-async function loadOptions() {
-  try {
-    const snap = await getDoc(doc(db, "config", "app"));
-    if (snap.exists() && snap.data().options) return { ...DEFAULT_OPTIONS, ...snap.data().options };
-  } catch (e) {}
-  return DEFAULT_OPTIONS;
-}
-
 async function startApp() {
-  OPT = await loadOptions();
-  const snap = await getDoc(doc(db, "submissions", uid));
-  data = snap.exists() ? (snap.data().data || {}) : {};
+  try {
+    const cfg = await restGet("config/app");
+    if (cfg && cfg.options) OPT = { ...DEFAULT_OPTIONS, ...cfg.options };
+  } catch (e) { /* varsayılanlarla devam */ }
+  try {
+    const sub = await restGet(`submissions/${uid}`);
+    data = (sub && sub.data) || {};
+  } catch (e) { data = {}; }
   $("#whoAmI").textContent = `${profile.ad} ${profile.soyad}`.trim() || profile.email;
   buildRail(); buildDynamicUI(); restoreInputs(); renderAlanRows(); renderLitRows(); bindAutosave();
   goStage(1);
@@ -683,7 +723,12 @@ $("#litSearchBtn").onclick = searchLiterature;
 $("#litQuery").addEventListener("keydown", e => { if (e.key === "Enter") { e.preventDefault(); searchLiterature(); } });
 
 async function logSearch(q) {
-  try { await setDoc(doc(db, "submissions", uid), { aramalar: arrayUnion({ q, t: Date.now() }) }, { merge: true }); } catch (e) {}
+  try {
+    const cur = await restGet(`submissions/${uid}`);
+    const arr = (cur && cur.aramalar) || [];
+    arr.push({ q, t: Date.now() });
+    await restSet(`submissions/${uid}`, { ...(cur || {}), aramalar: arr });
+  } catch (e) { /* sessiz */ }
 }
 
 function addLitRow(row) { const arr = data["s5.kaynaklar"] || []; arr.push(row); data["s5.kaynaklar"] = arr; renderLitRows(); queueSave(); }
@@ -718,7 +763,15 @@ const saveState = (cls, text) => { const el = $("#saveState"); el.className = "s
 const doSave = async () => {
   saveState("saving", "Kaydediliyor…");
   try {
-    await setDoc(doc(db, "submissions", uid), { data, ogrenci: `${profile.ad} ${profile.soyad}`.trim(), email: profile.email, program: profile.program || "", progress: updateProgress(), updatedAt: serverTimestamp() }, { merge: true });
+    await restSet(`submissions/${uid}`, {
+      data,
+      ogrenci: `${profile.ad} ${profile.soyad}`.trim(),
+      email: profile.email,
+      program: profile.program || "",
+      progress: updateProgress(),
+      updatedAt: new Date().toISOString(),
+      aramalar: data.__aramalar || []
+    });
     saveState("saved", "Kaydedildi ✓");
   } catch (e) { saveState("", "Kaydedilemedi!"); }
 };
@@ -755,5 +808,6 @@ $("#ozetYazdir").onclick = () => { $("#ozetOnizle").click(); setTimeout(() => wi
 // Başlangıç ekranı
 show("authScreen");
 </script>
+
 </body>
 </html>
