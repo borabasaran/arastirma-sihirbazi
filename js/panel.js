@@ -16,45 +16,33 @@ let appCfg = null;
 
 function msg(text, cls = "info") {
   const el = $("#authMsg");
+  if (!el) return;
   el.className = "msg" + (text ? " " + cls : "");
   el.textContent = text;
 }
 
-$("#loginForm").onsubmit = async (e) => {
-  e.preventDefault();
-  msg("Giriş yapılıyor…");
-  try {
-    await signInWithEmailAndPassword(auth, $("#loginEmail").value.trim(), $("#loginPass").value);
-  } catch (err) { msg(authError(err), "err"); }
-};
-$("#logoutBtn").onclick = () => signOut(auth);
+$("#logoutBtn").onclick = () => location.reload();
 
-// E-postaları büyük/küçük harf ve boşluk farkından bağımsız karşılaştır
-const normEmail = (e) => String(e || "").trim().toLowerCase();
-
-// Yetkili danışman e-postaları — doğrudan koda gömülü (veritabanına bağımlı değil).
-// Yeni danışman eklemek için bu listeye satır ekleyin.
-const ADVISOR_EMAILS = [
-  "bbasaran@anadolu.edu.tr"
-].map(normEmail);
-
-onAuthStateChanged(auth, async (user) => {
-  if (!user) { $("#authScreen").hidden = false; $("#panelScreen").hidden = true; return; }
-  const me = normEmail(user.email);
-  if (!ADVISOR_EMAILS.includes(me)) {
-    msg("Bu hesap danışman olarak yetkilendirilmemiş: " + user.email, "err");
-    await signOut(auth);
-    return;
-  }
-  // config/app varsa seçenek listelerini oku (yoksa varsayılanlar kullanılır)
+// ------------------------------------------------------------
+// GİRİŞSİZ AÇILIŞ — panel doğrudan verileri yükler.
+// (Giriş/şifre/yetki kontrolü kaldırıldı; panele erişim sayfa
+//  bağlantısını bilenlerle sınırlıdır. Dilerseniz sonra basit
+//  bir PIN veya gizli bağlantı koruması eklenebilir.)
+// ------------------------------------------------------------
+window.addEventListener("DOMContentLoaded", async () => {
   try {
     const snap = await getDoc(doc(db, "config", "app"));
     appCfg = snap.exists() ? snap.data() : {};
   } catch (err) { appCfg = {}; }
-  $("#whoAmI").textContent = user.email;
   $("#authScreen").hidden = true;
   $("#panelScreen").hidden = false;
-  await loadAll();
+  const who = $("#whoAmI"); if (who) who.textContent = "Danışman";
+  try {
+    await loadAll();
+  } catch (err) {
+    const el = $("#userList");
+    if (el) el.innerHTML = '<p class="msg err" style="display:block">Veriler yüklenemedi: ' + esc(err.message) + '</p>';
+  }
 });
 
 // ------------------------------------------------------------
@@ -279,9 +267,6 @@ function renderOptions() {
 $("#saveOptions").onclick = async () => {
   const lines = (el) => $("#" + el).value.split("\n").map(s => s.trim()).filter(Boolean);
   const advisorEmails = lines("optAdvisors");
-  if (!ADVISOR_EMAILS.includes(normEmail(auth.currentUser.email)) && !advisorEmails.map(normEmail).includes(normEmail(auth.currentUser.email))) {
-    if (!confirm("Uyarı: kendi e-postanız danışman listesinde yok; kaydederseniz panele erişiminizi kaybedersiniz. Yine de devam edilsin mi?")) return;
-  }
   const options = {};
   OPT_MAP.forEach(([el, key]) => options[key] = lines(el));
   try {
