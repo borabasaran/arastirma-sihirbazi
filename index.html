@@ -33,6 +33,7 @@
       <section class="stage" data-stage="1">
         <span class="eyebrow">Aşama 1 / 11</span>
         <h1>İlgi alanını seç</h1>
+        <p class="hint" style="margin-top:-8px">Burada hedeflenen: sizi gerçekten ilgilendiren geniş akademik alanları belirlemek. Bu seçimler henüz kesin konu değil, sadece başlangıç noktası.</p>
         <div class="yap"><b>YAP:</b> Boş sayfaya konu yazmaya çalışma; aşağıdaki alan havuzundan hareket et. Sana akademik olarak ilginç gelen <b>en az 3, en fazla 5</b> alanı işaretle, her biri için kısa gerekçe yaz.</div>
         <div class="card">
           <h3>Alan havuzu</h3>
@@ -42,9 +43,8 @@
         </div>
         <div class="card">
           <h3>Seçtiğim alanlar ve gerekçelerim</h3>
-          <p class="hint">Yukarıda işaretlediğiniz alanlar otomatik listelenir.</p>
-          <table class="t"><thead><tr><th style="width:24%">Alan</th><th>Neden ilgimi çekiyor?</th><th>Fark ettiğim ilk sorun</th><th>Çalışabileceğim bağlam</th></tr></thead>
-          <tbody id="alanRows"></tbody></table>
+          <p class="hint">Hedeflenen: her seçtiğiniz alan için neden ilginizi çektiğini, fark ettiğiniz ilk sorunu ve hangi bağlamda çalışabileceğinizi ayrı ayrı, rahatça yazabilmeniz. Yukarıda işaretlediğiniz alanlar otomatik listelenir.</p>
+          <div id="alanRows"></div>
           <div class="kontrol"><b>Kontrol sorusu:</b> Seçtiğim alan yalnızca popüler olduğu için mi ilgimi çekiyor, yoksa gerçekten araştırmaya değer bir sorun içeriyor mu?</div>
         </div>
       </section>
@@ -52,14 +52,16 @@
       <section class="stage" data-stage="2">
         <span class="eyebrow">Aşama 2 / 11</span>
         <h1>Geniş alanı daralt</h1>
+        <p class="hint" style="margin-top:-8px">Burada hedeflenen: geniş bir alanı, gerçekten araştırılabilir küçük bir konuya indirgemek. Beş boyuttan seçim yaptıkça konu netleşir.</p>
         <div class="yap"><b>YAP:</b> Seçtiğin alanı beş açıdan daralt: hedef grup, beceri/odak, araç, bağlam ve veri.</div>
-        <div class="card"><h3>Hedef grup</h3><div class="checks" id="hedefChecks"></div></div>
+        <div class="card"><h3>Hedef grup</h3><div class="checks" id="hedefChecks"></div><input type="text" data-k="s2.hedefDiger" placeholder="Diğer (listede yoksa buraya yazın)" style="margin-top:8px"></div>
         <div class="card"><h3>Beceri / odak</h3><div class="checks" id="beceriChecks"></div></div>
         <div class="card"><h3>Araç / ortam</h3><div class="checks" id="aracChecks"></div></div>
-        <div class="card"><h3>Bağlam</h3><div class="checks" id="baglamChecks"></div></div>
+        <div class="card"><h3>Bağlam</h3><div class="checks" id="baglamChecks"></div><input type="text" data-k="s2.baglamDiger" placeholder="Diğer (listede yoksa buraya yazın)" style="margin-top:8px"></div>
         <div class="card"><h3>Veri türü</h3><div class="checks" id="veriChecks"></div></div>
         <div class="card">
           <h3>Daraltılmış konu cümlem</h3>
+          <p class="hint">Bu cümle sonraki tüm aşamaların temelidir — boş bırakırsanız ilerleyebilirsiniz ama anahtar kelime üretimi ve özet aşamaları eksik kalır. En azından kabaca doldurmanız önerilir.</p>
           <textarea data-k="s2.konuCumlesi" placeholder="Geniş alan + hedef grup + odak + veri = daraltılmış konu cümlesi"></textarea>
         </div>
       </section>
@@ -67,6 +69,7 @@
       <section class="stage" data-stage="3">
         <span class="eyebrow">Aşama 3 / 11</span>
         <h1>Gözlemden araştırma problemine geç</h1>
+        <p class="hint" style="margin-top:-8px">Burada hedeflenen: yukarıda verdiğiniz kısa yanıtları, akademik bir "araştırma problemi" paragrafına dönüştürmek. Önce soruları tek tek yanıtlayın; alttaki paragraf kutusuna, o yanıtları birleştirip kalıba oturtarak yazın — otomatik doldurma yoktur, ama yanıtlarınız zaten taslağın malzemesidir.</p>
         <div class="card">
           <label class="f">Ne fark ettim?</label><textarea data-k="s3.fark"></textarea>
           <label class="f">Bu durum neden önemli?</label><textarea data-k="s3.onem"></textarea>
@@ -83,6 +86,7 @@
       <section class="stage" data-stage="4">
         <span class="eyebrow">Aşama 4 / 11</span>
         <h1>Anahtar kelimeleri üret</h1>
+        <p class="hint" style="margin-top:-8px">Burada hedeflenen: konunuzu farklı dillerde arayabilecek anahtar kelimelere çevirmek. Şimdilik her hücreyi kendiniz doldurmanız gerekiyor; diğer dilleri otomatik tamamlayan yapay zekâ desteği yakında eklenecek.</p>
         <div class="card">
           <table class="t"><thead><tr><th>Bileşen</th><th>Türkçe</th><th>İngilizce</th><th>Almanca</th></tr></thead>
           <tbody>
@@ -100,6 +104,7 @@
       <section class="stage" data-stage="5">
         <span class="eyebrow">Aşama 5 / 11</span>
         <h1>İlk literatür okuması</h1>
+        <p class="hint" style="margin-top:-8px">Burada hedeflenen: alanınızda daha önce ne çalışılmış görmek. Bulduğunuz makaleleri "Notlarıma ekle" ile aşağıya taşıyıp kısa notlar bırakın.</p>
         <div class="card">
           <h3>Literatür ara <span class="hint">(OpenAlex)</span></h3>
           <div class="grid2" style="align-items:end">
@@ -121,12 +126,13 @@
         </div>
         <div class="card">
           <h3>Okuma notlarım</h3>
-          <table class="t"><thead><tr><th style="width:26%">Kaynak</th><th>Amaç</th><th>Yöntem / veri</th><th>Temel bulgu</th><th>Benim fikrim için anlamı</th><th></th></tr></thead>
-          <tbody id="litRows"></tbody></table>
-          <div class="btnrow"><button class="btn ghost sm" id="litAddRow" type="button">+ Boş satır ekle</button></div>
+          <p class="hint">Arama sonuçlarındaki "Notlarıma ekle" düğmesi kaynağı buraya taşır; her kaynak için amaç, yöntem, bulgu ve kendi fikriniz için anlamını ayrı ayrı yazabilirsiniz.</p>
+          <div id="litRows"></div>
+          <div class="btnrow"><button class="btn ghost sm" id="litAddRow" type="button">+ Elle kaynak ekle</button></div>
         </div>
         <div class="card">
           <h3>Okuma sonrası kontrol</h3>
+          <p class="hint">Yukarıdaki notlarınıza bakarak bu alanları elle doldurun. (Bu adımı yapay zekâ desteğiyle otomatikleştirme özelliği yakında eklenecek.)</p>
           <input data-k="s5.yontemNotu" placeholder="Anket / görüşme / deneysel / doküman analizi / karma ...">
           <label class="f">En sık çalışılan hedef grup kim?</label>
           <input data-k="s5.grupNotu">
@@ -138,6 +144,7 @@
       <section class="stage" data-stage="6">
         <span class="eyebrow">Aşama 6 / 11</span>
         <h1>Araştırma boşluğunu belirle</h1>
+        <p class="hint" style="margin-top:-8px">Burada hedeflenen: literatürde eksik kalan, sizin çalışmanızın doldurabileceği yeri bulmak. (Bu paragrafı Aşama 5'teki notlarınızdan yola çıkarak yapay zekâ desteğiyle önerme özelliği yakında eklenecek.)</p>
         <div class="card"><div id="boslukChecks"></div></div>
         <div class="card">
           <h3>Araştırma boşluğu paragrafım</h3>
@@ -148,6 +155,7 @@
       <section class="stage" data-stage="7">
         <span class="eyebrow">Aşama 7 / 11</span>
         <h1>Araştırma sorularını yaz</h1>
+        <p class="hint" style="margin-top:-8px">Burada hedeflenen: konunuzu, veriyle cevaplanabilir net sorulara dönüştürmek. (Önceki aşamalardaki bilgilerinizden yola çıkarak soru önerme özelliği yapay zekâ desteğiyle yakında eklenecek.)</p>
         <div class="card">
           <h3>Soru kalıpları</h3>
           <div id="kalipList"></div>
@@ -164,6 +172,7 @@
       <section class="stage" data-stage="8">
         <span class="eyebrow">Aşama 8 / 11</span>
         <h1>Soruyu yöntemle eşleştir</h1>
+        <p class="hint" style="margin-top:-8px">Burada hedeflenen: sorunuzun tipine uygun araştırma yöntemini seçmek — yöntemi konudan önce seçmemek önemlidir.</p>
         <div class="card">
           <label class="f">Sorumun tipi</label>
           <select data-k="s8.tip">
@@ -190,6 +199,7 @@
       <section class="stage" data-stage="9">
         <span class="eyebrow">Aşama 9 / 11</span>
         <h1>Veri kaynağı ve yapılabilirlik</h1>
+        <p class="hint" style="margin-top:-8px">Burada hedeflenen: fikrin sadece ilginç değil, yaz döneminde gerçekten uygulanabilir olduğunu kontrol etmek.</p>
         <div class="card">
           <label class="f">Toplayacağım veri</label><input data-k="s9.veri">
           <div class="grid3">
@@ -209,6 +219,7 @@
       <section class="stage" data-stage="10">
         <span class="eyebrow">Aşama 10 / 11</span>
         <h1>Küçük ön araştırma / pilot deneme</h1>
+        <p class="hint" style="margin-top:-8px">Burada hedeflenen: büyük veri toplamaya başlamadan önce fikrin küçük ölçekte işleyip işlemediğini görmek.</p>
         <div class="card"><h3>Ön araştırma türüm</h3><div class="checks" id="pilotChecks"></div></div>
         <div class="card">
           <label class="f">Ne denedim / deneyeceğim?</label><textarea data-k="s10.deneme"></textarea>
@@ -230,6 +241,7 @@
       <section class="stage" data-stage="11">
         <span class="eyebrow">Aşama 11 / 11</span>
         <h1>Danışmanla paylaşılacak araştırma fikri özeti</h1>
+        <p class="hint" style="margin-top:-8px">Burada hedeflenen: önceki 10 aşamada yazdıklarınızı danışmanınızla ilk toplantıda paylaşabileceğiniz tek bir belgeye toplamak.</p>
         <div class="btnrow"><button class="btn acc" id="ozetDoldur" type="button">Önceki aşamalardan otomatik doldur</button></div>
         <div class="card">
           <label class="f">Geçici başlık</label><input data-k="s11.baslik">
@@ -312,7 +324,13 @@ function fromFields(fields) {
 }
 function docIdFromName(name) { return name.split("/").pop(); }
 
-// ---- REST yardımcıları ----
+// ---- REST yardımcıları (hepsi zaman aşımlı) ----
+function withTimeout(promise, ms, label) {
+  return Promise.race([
+    promise,
+    new Promise((_, reject) => setTimeout(() => reject(new Error(label + ": " + ms/1000 + " saniyede yanıt alınamadı. İnternet bağlantınızı kontrol edip tekrar deneyin.")), ms))
+  ]);
+}
 async function restList(collectionName) {
   const res = await fetch(`${BASE}/${collectionName}?pageSize=300`);
   if (!res.ok) throw new Error("Sunucu hatası (" + res.status + ")");
@@ -339,8 +357,8 @@ async function restSet(path, dataObj) {
 const DEFAULT_OPTIONS = {
   alanlar: ["Yabancı dil öğretiminde yapay zekâ","Üretken yapay zekâ ile materyal geliştirme","AI destekli yazma becerisi","AI destekli konuşma pratiği","AI avatarlar / sanal konuşma partnerleri","AI çıktılarının pedagojik değerlendirilmesi","Öğretmen adaylarının dijital yeterlikleri","Öğretmenlerin teknoloji kullanımı","AI okuryazarlığı ve eleştirel kullanım","Almanca öğretmen eğitiminde mikro yeterlilikler","Ders kitabı analizi","Ders kitaplarında kültür temsilleri","Ders kitaplarında cinsiyet / meslek temsilleri","Ders kitaplarında aile temsilleri","Kültürlerarası öğrenme","Dil öğreniminde motivasyon","Dil öğreniminde kaygı","Dil öğreniminde öz yeterlik","Okuma becerisi ve metin seçimi","GER / CEFR düzey belirleme","Ölçme ve değerlendirme","Öğrenci özerkliği ve stratejiler","Çok dillilik","Göç, kimlik ve dil öğrenimi","Özel gereksinimli öğrenciler için yabancı dil öğretimi","Müfredat / program / politika analizi"],
   hedefGruplar: ["Almanca öğretmen adayları", "Lisans öğrencileri", "Hazırlık öğrencileri", "Almanca öğretmenleri", "Akademisyenler", "Ders kitabı kullanıcıları"],
-  beceriler: ["Yazma", "Konuşma", "Okuma", "Dinleme", "Materyal geliştirme", "Değerlendirme", "Kültür / temsil", "Motivasyon / kaygı / öz yeterlik"],
-  araclar: ["ChatGPT / Claude / Gemini", "AI avatar / konuşma botu", "Google Forms / çevrim içi anket", "Ders kitabı / PDF / metin", "Öğrenci ürünleri", "Müfredat veya program belgeleri"],
+  beceriler: ["Yazma", "Konuşma", "Okuma", "Dinleme", "Materyal geliştirme", "Ölçme / Değerlendirme", "Kültür / temsil", "Motivasyon / kaygı / öz yeterlik", "Yeterlilikler", "Sınavlara hazırlık", "Diğer"],
+  araclar: ["Büyük Dil Modelleri (LLM)", "AI avatar / konuşma botu", "Çevrim içi Anket", "Ders kitabı / PDF / metin", "Öğrenci ürünleri", "Müfredat veya program belgeleri"],
   baglamlar: ["Almanca öğretmenliği", "Yabancı dil olarak Almanca", "Türkiye bağlamı", "Öğretmen eğitimi", "Lisans dersi", "Uzaktan / dijital öğrenme ortamı"],
   veriTurleri: ["Anket", "Görüşme", "Açık uçlu yanıt", "Ders kitabı içeriği", "AI çıktısı", "Öğrenci ürünü", "Gözlem / günlük", "Rubrik puanlaması"],
   bosluklar: ["Bağlam boşluğu", "Yöntem boşluğu", "Örneklem boşluğu", "Veri boşluğu", "Kuramsal boşluk", "Güncellik boşluğu"],
@@ -352,6 +370,9 @@ const DEFAULT_OPTIONS = {
 let uid = null, profile = null, OPT = DEFAULT_OPTIONS, data = {}, currentStage = 1;
 const STAGE_COUNT = 11;
 const STAGE_NAMES = ["İlgi alanı seç","Alanı daralt","Problem kur","Anahtar kelime üret","İlk literatürü oku","Boşluğu belirle","Soruları yaz","Yöntemle eşleştir","Yapılabilirlik","Pilot deneme","Fikir özeti"];
+
+function show() { /* artık tek ekran var, no-op */ }
+function setBtnLoading() { /* kullanılmıyor */ }
 
 // ------------------------------------------------------------
 // BAŞLANGIÇ — hiçbir giriş yok. Kimlik otomatik oluşturulur ve
@@ -536,16 +557,25 @@ function buildDynamicUI() {
 }
 
 function renderAlanRows() {
-  const tbody = $("#alanRows");
+  const wrap = $("#alanRows");
   const alanlar = data["s1.alanlar"] || []; const detay = data["s1.detay"] || {};
-  tbody.innerHTML = "";
-  if (!alanlar.length) { tbody.innerHTML = '<tr><td colspan="4" class="hint">Henüz alan seçilmedi.</td></tr>'; return; }
+  wrap.innerHTML = "";
+  if (!alanlar.length) { wrap.innerHTML = '<p class="hint">Henüz alan seçilmedi.</p>'; return; }
   alanlar.forEach(a => {
-    const d = detay[a] || {}; const tr = document.createElement("tr");
-    tr.innerHTML = `<td><b>${esc(a)}</b></td><td><textarea data-alan="${esc(a)}" data-f="neden">${esc(d.neden || "")}</textarea></td><td><textarea data-alan="${esc(a)}" data-f="sorun">${esc(d.sorun || "")}</textarea></td><td><textarea data-alan="${esc(a)}" data-f="baglam">${esc(d.baglam || "")}</textarea></td>`;
-    tbody.appendChild(tr);
+    const d = detay[a] || {};
+    const card = document.createElement("div");
+    card.style.cssText = "border:1px solid var(--line);border-radius:8px;padding:14px 16px;margin-bottom:14px;background:#fff";
+    card.innerHTML = `
+      <h4 style="margin:0 0 10px;font-family:var(--display)">${esc(a)}</h4>
+      <label class="f">Neden ilgimi çekiyor?</label>
+      <textarea data-alan="${esc(a)}" data-f="neden" style="min-height:64px">${esc(d.neden || "")}</textarea>
+      <label class="f">Fark ettiğim ilk sorun</label>
+      <textarea data-alan="${esc(a)}" data-f="sorun" style="min-height:64px">${esc(d.sorun || "")}</textarea>
+      <label class="f">Çalışabileceğim bağlam</label>
+      <textarea data-alan="${esc(a)}" data-f="baglam" style="min-height:64px">${esc(d.baglam || "")}</textarea>`;
+    wrap.appendChild(card);
   });
-  tbody.querySelectorAll("textarea").forEach(ta => ta.addEventListener("input", () => {
+  wrap.querySelectorAll("textarea").forEach(ta => ta.addEventListener("input", () => {
     const det = data["s1.detay"] || {}; det[ta.dataset.alan] = det[ta.dataset.alan] || {};
     det[ta.dataset.alan][ta.dataset.f] = ta.value; data["s1.detay"] = det; queueSave();
   }));
@@ -619,16 +649,25 @@ function addLitRow(row) { const arr = data["s5.kaynaklar"] || []; arr.push(row);
 $("#litAddRow").onclick = () => addLitRow({ kaynak: "", amac: "", yontem: "", bulgu: "", anlam: "" });
 
 function renderLitRows() {
-  const tbody = $("#litRows"); const arr = data["s5.kaynaklar"] || []; tbody.innerHTML = "";
-  if (!arr.length) { tbody.innerHTML = '<tr><td colspan="6" class="hint">Henüz kaynak eklenmedi.</td></tr>'; return; }
+  const wrap = $("#litRows"); const arr = data["s5.kaynaklar"] || []; wrap.innerHTML = "";
+  if (!arr.length) { wrap.innerHTML = '<p class="hint">Henüz kaynak eklenmedi.</p>'; return; }
   arr.forEach((r, i) => {
-    const tr = document.createElement("tr");
-    const cell = (f) => `<td><textarea data-i="${i}" data-f="${f}">${esc(r[f] || "")}</textarea></td>`;
-    tr.innerHTML = cell("kaynak") + cell("amac") + cell("yontem") + cell("bulgu") + cell("anlam") + `<td><button class="btn sm danger" type="button" data-del="${i}">✕</button></td>`;
-    tbody.appendChild(tr);
+    const card = document.createElement("div");
+    card.style.cssText = "border:1px solid var(--line);border-radius:8px;padding:14px 16px;margin-bottom:14px;background:#fff";
+    const field = (f, label) => `<label class="f">${label}</label><textarea data-i="${i}" data-f="${f}" style="min-height:56px">${esc(r[f] || "")}</textarea>`;
+    card.innerHTML = `
+      <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:10px">
+        <div style="flex:1">${field("kaynak", "Kaynak")}</div>
+        <button class="btn sm danger" type="button" data-del="${i}" style="margin-top:22px">✕</button>
+      </div>
+      ${field("amac", "Amaç")}
+      ${field("yontem", "Yöntem / veri")}
+      ${field("bulgu", "Temel bulgu")}
+      ${field("anlam", "Benim fikrim için anlamı")}`;
+    wrap.appendChild(card);
   });
-  tbody.querySelectorAll("textarea").forEach(ta => ta.addEventListener("input", () => { data["s5.kaynaklar"][+ta.dataset.i][ta.dataset.f] = ta.value; queueSave(); }));
-  tbody.querySelectorAll("[data-del]").forEach(b => b.onclick = () => { data["s5.kaynaklar"].splice(+b.dataset.del, 1); renderLitRows(); queueSave(); });
+  wrap.querySelectorAll("textarea").forEach(ta => ta.addEventListener("input", () => { data["s5.kaynaklar"][+ta.dataset.i][ta.dataset.f] = ta.value; queueSave(); }));
+  wrap.querySelectorAll("[data-del]").forEach(b => b.onclick = () => { data["s5.kaynaklar"].splice(+b.dataset.del, 1); renderLitRows(); queueSave(); });
 }
 
 function restoreInputs() {
