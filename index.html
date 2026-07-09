@@ -303,8 +303,21 @@ function aiBusy(on) {
   const el = document.getElementById("aiStatus");
   if (el) el.hidden = aiBusyCount <= 0;
 }
+async function ensureGeminiKey() {
+  if (GEMINI_API_KEY) return GEMINI_API_KEY;
+  try {
+    const res = await fetch(`${BASE}/config/app`);
+    if (res.ok) {
+      const json = await res.json();
+      const cfg = fromFields(json.fields);
+      if (cfg && cfg.geminiKey) GEMINI_API_KEY = cfg.geminiKey;
+    }
+  } catch (e) { /* sessiz */ }
+  return GEMINI_API_KEY;
+}
 async function callGemini(prompt) {
-  if (!GEMINI_API_KEY) throw new Error("Gemini API anahtarı henüz ayarlanmamış. /ayarlar.html sayfasından anahtarı kaydedin.");
+  await ensureGeminiKey();
+  if (!GEMINI_API_KEY) throw new Error("Gemini API anahtarı bulunamadı. /ayarlar.html sayfasından anahtarı kaydedip bu sayfayı yenileyin (F5).");
   aiBusy(true);
   try {
     const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${GEMINI_MODEL}:generateContent?key=${GEMINI_API_KEY}`, {
