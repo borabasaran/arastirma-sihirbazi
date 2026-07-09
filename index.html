@@ -296,12 +296,25 @@ const OPENALEX_MAILTO = "bbasaran@anadolu.edu.tr";
 
 // ---- Gemini (yapay zekâ) desteği ----
 let GEMINI_API_KEY = null; // Firestore'daki config/app.geminiKey'den okunur (koda gömülmez)
-const GEMINI_MODEL = "gemini-2.0-flash";
+const GEMINI_MODEL = "gemini-2.5-flash";
 let aiBusyCount = 0;
 function aiBusy(on) {
   aiBusyCount += on ? 1 : -1;
   const el = document.getElementById("aiStatus");
   if (el) el.hidden = aiBusyCount <= 0;
+}
+function showAiError(msg) {
+  const el = document.getElementById("aiStatus");
+  if (!el) return;
+  el.innerHTML = "⚠ " + String(msg ?? "").replace(/[&<>"']/g, c => ({ "&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;" }[c]));
+  el.style.background = "rgba(220,53,69,.25)";
+  el.hidden = false;
+  clearTimeout(showAiError._t);
+  showAiError._t = setTimeout(() => {
+    el.hidden = true;
+    el.innerHTML = '<span class="ai-spin"></span>ArSi çalışıyor…';
+    el.style.background = "rgba(247,212,7,.35)";
+  }, 7000);
 }
 async function ensureGeminiKey() {
   if (GEMINI_API_KEY) return GEMINI_API_KEY;
@@ -781,6 +794,7 @@ async function translateRow(prefix, label, sourceLang) {
     queueSave();
   } catch (err) {
     console.error("Çeviri hatası:", err);
+    showAiError("Çeviri başarısız: " + err.message);
   } finally {
     rowTranslating[prefix] = false;
   }
