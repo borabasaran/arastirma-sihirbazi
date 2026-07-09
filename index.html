@@ -5,6 +5,12 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Araştırma Konusu Geliştirme Sihirbazı</title>
 <link rel="stylesheet" href="css/style.css">
+<style>
+@keyframes arsiSpin { to { transform: rotate(360deg); } }
+.ai-spin { display:inline-block; width:11px; height:11px; border:2px solid rgba(20,20,20,.25); border-top-color:#141414; border-radius:50%; animation: arsiSpin .7s linear infinite; margin-right:6px; vertical-align:-1px; }
+#aiStatus .ai-spin { border-color:rgba(255,255,255,.35); border-top-color:#fff; }
+.ai-btn[disabled] { opacity:.6; cursor:wait; }
+</style>
 </head>
 <body>
 
@@ -15,6 +21,7 @@
     <span class="title">Doktora · Konu Geliştirme Rehberi</span>
     <span class="spacer"></span>
     <span id="saveState" class="savestate">—</span>
+    <span id="aiStatus" class="savestate" hidden style="background:rgba(247,212,7,.35)"><span class="ai-spin"></span>ArSi çalışıyor…</span>
     <span class="who" id="whoAmI"></span>
     <button class="btn sm ghost" style="border-color:#fff;color:#fff" id="logoutBtn">Çıkış</button>
   </div>
@@ -86,7 +93,7 @@
       <section class="stage" data-stage="4">
         <span class="eyebrow">Aşama 4 / 11</span>
         <h1>Anahtar kelimeleri üret</h1>
-        <p class="hint" style="margin-top:-8px">Burada hedeflenen: konunuzu farklı dillerde arayabilecek anahtar kelimelere çevirmek. Şimdilik her hücreyi kendiniz doldurmanız gerekiyor; diğer dilleri otomatik tamamlayan yapay zekâ desteği yakında eklenecek.</p>
+        <p class="hint" style="margin-top:-8px">Burada hedeflenen: konunuzu farklı dillerde arayabilecek anahtar kelimelere çevirmek. <b>Bir hücreye yazıp dışına tıkladığınızda (veya Tab'a bastığınızda), aynı satırdaki boş diller yapay zekâ ile otomatik doldurulur.</b> Dolu hücrelerin üzerine yazılmaz.</p>
         <div class="card">
           <table class="t"><thead><tr><th>Bileşen</th><th>Türkçe</th><th>İngilizce</th><th>Almanca</th></tr></thead>
           <tbody>
@@ -144,10 +151,11 @@
       <section class="stage" data-stage="6">
         <span class="eyebrow">Aşama 6 / 11</span>
         <h1>Araştırma boşluğunu belirle</h1>
-        <p class="hint" style="margin-top:-8px">Burada hedeflenen: literatürde eksik kalan, sizin çalışmanızın doldurabileceği yeri bulmak. (Bu paragrafı Aşama 5'teki notlarınızdan yola çıkarak yapay zekâ desteğiyle önerme özelliği yakında eklenecek.)</p>
+        <p class="hint" style="margin-top:-8px">Burada hedeflenen: literatürde eksik kalan, sizin çalışmanızın doldurabileceği yeri bulmak. Altındaki "Yapay zekâ ile taslak öner" düğmesi, Aşama 5'teki notlarınızdan yola çıkarak bir taslak paragraf önerir — siz düzenlersiniz.</p>
         <div class="card"><div id="boslukChecks"></div></div>
         <div class="card">
           <h3>Araştırma boşluğu paragrafım</h3>
+          <div class="btnrow" style="margin-top:0;margin-bottom:10px"><button class="btn acc ai-btn" id="aiBoslukBtn" type="button">✨ Yapay zekâ ile taslak öner</button></div>
           <textarea data-k="s6.paragraf" style="min-height:110px"></textarea>
         </div>
       </section>
@@ -155,12 +163,13 @@
       <section class="stage" data-stage="7">
         <span class="eyebrow">Aşama 7 / 11</span>
         <h1>Araştırma sorularını yaz</h1>
-        <p class="hint" style="margin-top:-8px">Burada hedeflenen: konunuzu, veriyle cevaplanabilir net sorulara dönüştürmek. (Önceki aşamalardaki bilgilerinizden yola çıkarak soru önerme özelliği yapay zekâ desteğiyle yakında eklenecek.)</p>
+        <p class="hint" style="margin-top:-8px">Burada hedeflenen: konunuzu, veriyle cevaplanabilir net sorulara dönüştürmek. Altındaki "Yapay zekâ ile soru öner" düğmesi, önceki aşamalardaki bilgilerinizden bir taslak soru seti önerir — siz düzenlersiniz.</p>
         <div class="card">
           <h3>Soru kalıpları</h3>
           <div id="kalipList"></div>
         </div>
         <div class="card">
+          <div class="btnrow" style="margin-top:0;margin-bottom:10px"><button class="btn acc ai-btn" id="aiSorularBtn" type="button">✨ Yapay zekâ ile soru öner</button></div>
           <label class="f">Ana araştırma sorusu</label>
           <textarea data-k="s7.ana"></textarea>
           <label class="f">Alt soru 1</label><textarea data-k="s7.alt1" style="min-height:48px"></textarea>
@@ -285,6 +294,41 @@ const PROJECT_ID = "arastirma-sihirbazi";
 const BASE = `https://firestore.googleapis.com/v1/projects/${PROJECT_ID}/databases/(default)/documents`;
 const OPENALEX_MAILTO = "bbasaran@anadolu.edu.tr";
 
+// ---- Gemini (yapay zekâ) desteği ----
+let GEMINI_API_KEY = null; // Firestore'daki config/app.geminiKey'den okunur (koda gömülmez)
+const GEMINI_MODEL = "gemini-2.0-flash";
+let aiBusyCount = 0;
+function aiBusy(on) {
+  aiBusyCount += on ? 1 : -1;
+  const el = document.getElementById("aiStatus");
+  if (el) el.hidden = aiBusyCount <= 0;
+}
+async function callGemini(prompt) {
+  if (!GEMINI_API_KEY) throw new Error("Gemini API anahtarı henüz ayarlanmamış. /ayarlar.html sayfasından anahtarı kaydedin.");
+  aiBusy(true);
+  try {
+    const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${GEMINI_MODEL}:generateContent?key=${GEMINI_API_KEY}`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ contents: [{ parts: [{ text: prompt }] }] })
+    });
+    if (!res.ok) {
+      const errText = await res.text().catch(() => "");
+      throw new Error("Gemini hatası (" + res.status + ") " + errText.slice(0, 200));
+    }
+    const json = await res.json();
+    const text = (json.candidates?.[0]?.content?.parts || []).map(p => p.text || "").join("");
+    return text.trim();
+  } finally {
+    aiBusy(false);
+  }
+}
+function extractJson(text) {
+  const m = text.match(/\{[\s\S]*\}/);
+  if (!m) return null;
+  try { return JSON.parse(m[0]); } catch (e) { return null; }
+}
+
 const $ = (s) => document.querySelector(s);
 const $$ = (s) => [...document.querySelectorAll(s)];
 const esc = (s) => String(s ?? "").replace(/[&<>"']/g, c => ({ "&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;" }[c]));
@@ -405,7 +449,7 @@ $("#logoutBtn").onclick = () => {
 
 function openWizardNow() {
   $("#whoAmI").textContent = `${profile.ad} ${profile.soyad}`.trim() || "Öğrenci";
-  buildRail(); buildDynamicUI(); restoreInputs(); renderAlanRows(); renderLitRows(); bindAutosave();
+  buildRail(); buildDynamicUI(); restoreInputs(); renderAlanRows(); renderLitRows(); bindAutosave(); setupTranslation();
   goStage(1);
 }
 
@@ -423,6 +467,9 @@ async function startApp() {
       if (cfg && cfg.options) {
         OPT = { ...DEFAULT_OPTIONS, ...cfg.options };
         buildDynamicUI(); restoreInputs();
+      }
+      if (cfg && cfg.geminiKey) {
+        GEMINI_API_KEY = cfg.geminiKey;
       }
     })
     .catch(() => {});
@@ -669,6 +716,125 @@ function renderLitRows() {
   wrap.querySelectorAll("textarea").forEach(ta => ta.addEventListener("input", () => { data["s5.kaynaklar"][+ta.dataset.i][ta.dataset.f] = ta.value; queueSave(); }));
   wrap.querySelectorAll("[data-del]").forEach(b => b.onclick = () => { data["s5.kaynaklar"].splice(+b.dataset.del, 1); renderLitRows(); queueSave(); });
 }
+
+// ------------------------------------------------------------
+// AŞAMA 4: dolu hücreden diğer dillere otomatik çeviri
+// ------------------------------------------------------------
+const TRANSLATE_ROWS = [
+  { prefix: "konu", label: "araştırma konusu" },
+  { prefix: "grup", label: "hedef grup" },
+  { prefix: "odak", label: "odak / değişken" },
+  { prefix: "yontem", label: "yöntem / veri" },
+  { prefix: "baglam", label: "bağlam" }
+];
+const LANG_NAME = { tr: "Türkçe", en: "İngilizce", de: "Almanca" };
+const rowTranslating = {};
+
+function setupTranslation() {
+  TRANSLATE_ROWS.forEach(({ prefix, label }) => {
+    ["tr", "en", "de"].forEach(lang => {
+      const el = document.querySelector(`[data-k="s4.${prefix}.${lang}"]`);
+      if (!el) return;
+      el.addEventListener("blur", () => translateRow(prefix, label, lang));
+    });
+  });
+}
+
+async function translateRow(prefix, label, sourceLang) {
+  if (rowTranslating[prefix]) return;
+  const srcEl = document.querySelector(`[data-k="s4.${prefix}.${sourceLang}"]`);
+  const srcText = (srcEl?.value || "").trim();
+  if (!srcText) return;
+  const targets = ["tr", "en", "de"].filter(l => l !== sourceLang).filter(l => {
+    const el = document.querySelector(`[data-k="s4.${prefix}.${l}"]`);
+    return el && !el.value.trim();
+  });
+  if (!targets.length) return;
+  rowTranslating[prefix] = true;
+  try {
+    const prompt = `Sen akademik bir çeviri asistanısın. Aşağıdaki "${label}" ifadesini ${LANG_NAME[sourceLang]} dilinden ${targets.map(t => LANG_NAME[t]).join(" ve ")} diline, akademik literatür taraması için anahtar kelime olarak uygun şekilde çevir. Sadece şu JSON formatında, başka hiçbir açıklama olmadan yanıt ver: {${targets.map(t => `"${t}":"..."`).join(",")}}\n\nMetin: "${srcText}"`;
+    const raw = await callGemini(prompt);
+    const obj = extractJson(raw);
+    if (!obj) return;
+    targets.forEach(t => {
+      if (obj[t]) {
+        const el = document.querySelector(`[data-k="s4.${prefix}.${t}"]`);
+        if (el && !el.value.trim()) {
+          el.value = obj[t];
+          data[`s4.${prefix}.${t}`] = obj[t];
+        }
+      }
+    });
+    queueSave();
+  } catch (err) {
+    console.error("Çeviri hatası:", err);
+  } finally {
+    rowTranslating[prefix] = false;
+  }
+}
+
+// ------------------------------------------------------------
+// AŞAMA 6: araştırma boşluğu paragrafı önerisi
+// ------------------------------------------------------------
+$("#aiBoslukBtn").onclick = async () => {
+  const btn = $("#aiBoslukBtn");
+  const mevcut = (data["s6.paragraf"] || "").trim();
+  if (mevcut && !confirm("Mevcut paragrafın üzerine yazılacak. Devam edilsin mi?")) return;
+  btn.disabled = true;
+  try {
+    const notlar = (data["s5.kaynaklar"] || []).map(r => `- ${r.kaynak}: ${r.bulgu || ""}`).join("\n");
+    const prompt = `Sen bir akademik araştırma danışmanısın. Aşağıdaki bilgilere dayanarak, Türkçe akademik bir "araştırma boşluğu" paragrafı yaz (2-4 cümle). Kalıp: "Mevcut literatürde ... üzerine çalışmalar bulunmakla birlikte, ... bağlamında ... konusunun yeterince incelenmediği görülmektedir." Sadece paragrafı yaz, başka açıklama ekleme.
+
+Daraltılmış konu: ${data["s2.konuCumlesi"] || "—"}
+Problem: ${data["s3.paragraf"] || "—"}
+Literatür notları:
+${notlar || "—"}
+Eksik kalan yön notu: ${data["s5.eksikNotu"] || "—"}`;
+    const raw = await callGemini(prompt);
+    if (raw) {
+      $('[data-k="s6.paragraf"]').value = raw;
+      data["s6.paragraf"] = raw;
+      queueSave();
+    }
+  } catch (err) {
+    alert("Öneri alınamadı: " + err.message);
+  } finally {
+    btn.disabled = false;
+  }
+};
+
+// ------------------------------------------------------------
+// AŞAMA 7: araştırma sorusu önerisi
+// ------------------------------------------------------------
+$("#aiSorularBtn").onclick = async () => {
+  const btn = $("#aiSorularBtn");
+  const mevcut = (data["s7.ana"] || "").trim();
+  if (mevcut && !confirm("Mevcut sorular üzerine yazılacak. Devam edilsin mi?")) return;
+  btn.disabled = true;
+  try {
+    const prompt = `Sen bir akademik araştırma danışmanısın. Aşağıdaki bilgilere dayanarak bir ana araştırma sorusu ve üç alt soru öner (Türkçe, akademik dil). Sadece şu JSON formatında yanıt ver, başka açıklama ekleme: {"ana":"...","alt1":"...","alt2":"...","alt3":"..."}
+
+Daraltılmış konu: ${data["s2.konuCumlesi"] || "—"}
+Problem: ${data["s3.paragraf"] || "—"}
+Araştırma boşluğu: ${data["s6.paragraf"] || "—"}`;
+    const raw = await callGemini(prompt);
+    const obj = extractJson(raw);
+    if (obj) {
+      ["ana", "alt1", "alt2", "alt3"].forEach(k => {
+        if (obj[k]) {
+          const el = $(`[data-k="s7.${k}"]`);
+          if (el) el.value = obj[k];
+          data[`s7.${k}`] = obj[k];
+        }
+      });
+      queueSave();
+    }
+  } catch (err) {
+    alert("Öneri alınamadı: " + err.message);
+  } finally {
+    btn.disabled = false;
+  }
+};
 
 function restoreInputs() {
   $$("[data-k]").forEach(el => { if (data[el.dataset.k] != null) el.value = data[el.dataset.k]; });
