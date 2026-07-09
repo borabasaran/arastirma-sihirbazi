@@ -1,0 +1,82 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>ArSi Ayarlar</title>
+<link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+<div class="authwrap">
+  <div class="authcard">
+    <span class="mark">ArSi</span>
+    <h1>Ayarlar</h1>
+    <p class="muted">Gemini API anahtarını burada kaydedin. Anahtar sadece veritabanında (Firestore) saklanır, hiçbir zaman GitHub koduna yazılmaz.</p>
+    <div id="msg" class="msg"></div>
+    <form id="form">
+      <label class="f">Gemini API anahtarı</label>
+      <input type="text" id="key" placeholder="AIza... veya AQ.... ile başlayan anahtar" autocomplete="off">
+      <div class="btnrow">
+        <button type="submit" class="btn acc">Kaydet</button>
+      </div>
+    </form>
+    <p class="hint" style="margin-top:14px">Kaydettikten sonra bu sayfayı kapatabilirsiniz. Ana sihirbaz sayfası anahtarı otomatik olarak buradan okuyacaktır.</p>
+  </div>
+</div>
+
+<script type="module">
+const PROJECT_ID = "arastirma-sihirbazi";
+const BASE = `https://firestore.googleapis.com/v1/projects/${PROJECT_ID}/databases/(default)/documents`;
+const $ = (s) => document.querySelector(s);
+
+function msg(text, cls) {
+  const el = $("#msg");
+  el.className = "msg" + (text ? " " + cls : "");
+  el.textContent = text;
+}
+
+// Mevcut anahtarı göster (varsa)
+(async () => {
+  try {
+    const res = await fetch(`${BASE}/config/app`);
+    if (res.ok) {
+      const json = await res.json();
+      const gk = json.fields?.geminiKey?.stringValue;
+      if (gk) $("#key").value = gk;
+    }
+  } catch (e) {}
+})();
+
+$("#form").onsubmit = async (e) => {
+  e.preventDefault();
+  const key = $("#key").value.trim();
+  if (!key) { msg("Anahtarı yazın.", "err"); return; }
+  msg("Kaydediliyor…");
+  try {
+    // Önce mevcut config/app belgesini oku (varsa diğer alanları korumak için)
+    let existing = {};
+    try {
+      const res = await fetch(`${BASE}/config/app`);
+      if (res.ok) {
+        const json = await res.json();
+        for (const [k, v] of Object.entries(json.fields || {})) {
+          if (k === "geminiKey") continue;
+          existing[k] = v;
+        }
+      }
+    } catch (e) {}
+    existing.geminiKey = { stringValue: key };
+    const res = await fetch(`${BASE}/config/app`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ fields: existing })
+    });
+    if (!res.ok) throw new Error("Yazma hatası (" + res.status + ")");
+    msg("Kaydedildi ✓ Artık ana sihirbaz sayfasında yapay zekâ özellikleri çalışacak.", "info");
+  } catch (err) {
+    msg("HATA: " + err.message, "err");
+  }
+};
+</script>
+</body>
+</html>
