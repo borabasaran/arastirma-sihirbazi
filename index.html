@@ -8,31 +8,8 @@
 </head>
 <body>
 
-<!-- ============ BAŞLA (isim, şifre/e-posta yok) ============ -->
-<div id="authScreen" class="authwrap">
-  <div class="authcard">
-    <span class="mark">ArSi</span>
-    <h1>Araştırma Sihirbazı</h1>
-    <p class="muted">Adım adım konu geliştirme platformu.</p>
-    <div id="authMsg" class="msg"></div>
-
-    <form id="startForm">
-      <div class="grid2">
-        <div><label class="f">Ad</label><input type="text" id="regName" required></div>
-        <div><label class="f">Soyad</label><input type="text" id="regSurname" required></div>
-      </div>
-      <label class="f">Program / anabilim dalı (isteğe bağlı)</label>
-      <input type="text" id="regProgram" placeholder="Örn. Alman Dili Eğitimi Doktora">
-      <div class="btnrow">
-        <button type="submit" class="btn acc" id="startBtn">Başla</button>
-      </div>
-      <p class="hint" style="margin-top:10px">Giriş bilgisi gerekmez. Bu tarayıcıda kaldığınız yerden devam edersiniz.</p>
-    </form>
-  </div>
-</div>
-
 <!-- ============ UYGULAMA ============ -->
-<div id="appScreen" hidden>
+<div id="appScreen">
   <div class="topbar">
     <span class="mark">ArSi</span>
     <span class="title">Doktora · Konu Geliştirme Rehberi</span>
@@ -335,13 +312,7 @@ function fromFields(fields) {
 }
 function docIdFromName(name) { return name.split("/").pop(); }
 
-// ---- REST yardımcıları (hepsi zaman aşımlı) ----
-function withTimeout(promise, ms, label) {
-  return Promise.race([
-    promise,
-    new Promise((_, reject) => setTimeout(() => reject(new Error(label + ": " + ms/1000 + " saniyede yanıt alınamadı. İnternet bağlantınızı kontrol edip tekrar deneyin.")), ms))
-  ]);
-}
+// ---- REST yardımcıları ----
 async function restList(collectionName) {
   const res = await fetch(`${BASE}/${collectionName}?pageSize=300`);
   if (!res.ok) throw new Error("Sunucu hatası (" + res.status + ")");
@@ -382,74 +353,39 @@ let uid = null, profile = null, OPT = DEFAULT_OPTIONS, data = {}, currentStage =
 const STAGE_COUNT = 11;
 const STAGE_NAMES = ["İlgi alanı seç","Alanı daralt","Problem kur","Anahtar kelime üret","İlk literatürü oku","Boşluğu belirle","Soruları yaz","Yöntemle eşleştir","Yapılabilirlik","Pilot deneme","Fikir özeti"];
 
-function show(id) {
-  ["authScreen", "appScreen"].forEach(s => $("#" + s).hidden = (s !== id));
-}
-function msg(text, cls = "info") {
-  const el = $("#authMsg");
-  el.className = "msg" + (text ? " " + cls : "");
-  el.textContent = text;
-}
-function setBtnLoading(btn, loading, label) {
-  btn.disabled = loading;
-  btn.textContent = loading ? "Lütfen bekleyin…" : label;
-}
-
 // ------------------------------------------------------------
-// BAŞLANGIÇ — şifre/e-posta yok. Tarayıcıda kimlik saklanır.
+// BAŞLANGIÇ — hiçbir giriş yok. Kimlik otomatik oluşturulur ve
+// tarayıcıda saklanır; sayfa açılır açılmaz sihirbaz gösterilir.
 // ------------------------------------------------------------
 function newId() {
   return "u" + Date.now().toString(36) + Math.random().toString(36).slice(2, 8);
 }
 
-$("#startForm").onsubmit = async (e) => {
-  e.preventDefault();
-  const btn = $("#startBtn");
-  setBtnLoading(btn, true, "Başla");
-  msg("Başlatılıyor…");
-  try {
-    uid = newId();
-    profile = {
-      ad: $("#regName").value.trim(),
-      soyad: $("#regSurname").value.trim(),
-      program: $("#regProgram").value.trim()
-    };
-    localStorage.setItem("arsi_uid", uid);
-    localStorage.setItem("arsi_profile", JSON.stringify(profile));
-    await withTimeout(startApp(), 10000, "Uygulama başlatma");
-  } catch (err) {
-    msg("HATA: " + err.message, "err");
-    console.error(err);
-  } finally {
-    setBtnLoading(btn, false, "Başla");
-  }
-};
-
 $("#logoutBtn").onclick = () => {
+  if (!confirm("Bu tarayıcıdaki kaydı silip yeni bir çalışma başlatmak istiyor musunuz? Mevcut ilerlemeniz sunucuda saklı kalır ama bu tarayıcıdan artık erişemezsiniz.")) return;
   localStorage.removeItem("arsi_uid");
   localStorage.removeItem("arsi_profile");
-  uid = null; profile = null;
-  show("authScreen");
+  location.reload();
 };
 
-// Sayfa açılışında daha önce başlanmış mı diye bak
-(function initFromLocalStorage() {
-  const savedUid = localStorage.getItem("arsi_uid");
-  const savedProfile = localStorage.getItem("arsi_profile");
-  if (savedUid && savedProfile) {
-    uid = savedUid;
-    try { profile = JSON.parse(savedProfile); } catch (e) { profile = { ad: "", soyad: "" }; }
-    startApp().catch(err => { msg("HATA: " + err.message, "err"); show("authScreen"); });
-  } else {
-    show("authScreen");
+(function boot() {
+  let savedUid = localStorage.getItem("arsi_uid");
+  let savedProfile = localStorage.getItem("arsi_profile");
+  if (!savedUid) {
+    savedUid = newId();
+    savedProfile = JSON.stringify({ ad: "", soyad: "", program: "" });
+    localStorage.setItem("arsi_uid", savedUid);
+    localStorage.setItem("arsi_profile", savedProfile);
   }
+  uid = savedUid;
+  try { profile = JSON.parse(savedProfile); } catch (e) { profile = { ad: "", soyad: "", program: "" }; }
+  startApp();
 })();
 
 function openWizardNow() {
   $("#whoAmI").textContent = `${profile.ad} ${profile.soyad}`.trim() || "Öğrenci";
   buildRail(); buildDynamicUI(); restoreInputs(); renderAlanRows(); renderLitRows(); bindAutosave();
   goStage(1);
-  show("appScreen");
 }
 
 async function startApp() {
