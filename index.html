@@ -10,6 +10,10 @@
 .ai-spin { display:inline-block; width:11px; height:11px; border:2px solid rgba(20,20,20,.25); border-top-color:#141414; border-radius:50%; animation: arsiSpin .7s linear infinite; margin-right:6px; vertical-align:-1px; }
 #aiStatus .ai-spin { border-color:rgba(255,255,255,.35); border-top-color:#fff; }
 .ai-btn[disabled] { opacity:.6; cursor:wait; }
+.chip { display:inline-block; padding:6px 12px; margin:3px 6px 3px 0; border:1.5px solid var(--line,#ddd); border-radius:999px; background:#fff; font-size:.86rem; cursor:pointer; transition:.15s; }
+.chip:hover { border-color:#141414; }
+.chip.active { background:#141414; color:#F7D407; border-color:#141414; font-weight:600; }
+.chip-wait { font-size:.82rem; color:#888; font-style:italic; }
 </style>
 </head>
 <body>
@@ -50,7 +54,7 @@
         </div>
         <div class="card">
           <h3>Seçtiğim alanlar ve gerekçelerim</h3>
-          <p class="hint">Hedeflenen: her seçtiğiniz alan için neden ilginizi çektiğini, fark ettiğiniz ilk sorunu ve hangi bağlamda çalışabileceğinizi ayrı ayrı, rahatça yazabilmeniz. Yukarıda işaretlediğiniz alanlar otomatik listelenir.</p>
+          <p class="hint">Hedeflenen: sizi zorlamadan gerekçe toplamak. Aklınıza gelen kısa bir not yazın (isteğe bağlı), sonra "✨ Seçenek öner" ile yapay zekânın önerdiği kısa ifadelerden size uygun olanlara tıklayın — yazmanıza gerek kalmadan.</p>
           <div id="alanRows"></div>
           <div class="kontrol"><b>Kontrol sorusu:</b> Seçtiğim alan yalnızca popüler olduğu için mi ilgimi çekiyor, yoksa gerçekten araştırmaya değer bir sorun içeriyor mu?</div>
         </div>
@@ -634,24 +638,82 @@ function renderAlanRows() {
   const alanlar = data["s1.alanlar"] || []; const detay = data["s1.detay"] || {};
   wrap.innerHTML = "";
   if (!alanlar.length) { wrap.innerHTML = '<p class="hint">Henüz alan seçilmedi.</p>'; return; }
+  const FIELD_LABEL = { neden: "Neden ilgimi çekiyor?", sorun: "Fark ettiğim ilk sorun", baglam: "Çalışabileceğim bağlam" };
   alanlar.forEach(a => {
     const d = detay[a] || {};
     const card = document.createElement("div");
     card.style.cssText = "border:1px solid var(--line);border-radius:8px;padding:14px 16px;margin-bottom:14px;background:#fff";
     card.innerHTML = `
       <h4 style="margin:0 0 10px;font-family:var(--display)">${esc(a)}</h4>
-      <label class="f">Neden ilgimi çekiyor?</label>
-      <textarea data-alan="${esc(a)}" data-f="neden" style="min-height:64px">${esc(d.neden || "")}</textarea>
-      <label class="f">Fark ettiğim ilk sorun</label>
-      <textarea data-alan="${esc(a)}" data-f="sorun" style="min-height:64px">${esc(d.sorun || "")}</textarea>
-      <label class="f">Çalışabileceğim bağlam</label>
-      <textarea data-alan="${esc(a)}" data-f="baglam" style="min-height:64px">${esc(d.baglam || "")}</textarea>`;
+      <label class="f">Aklınızdakileri kısaca yazın (isteğe bağlı)</label>
+      <textarea data-alan="${esc(a)}" data-f="not" style="min-height:44px" placeholder="Bu alanla ilgili aklınıza gelen herhangi bir şey…">${esc(d.not || "")}</textarea>
+      <div class="btnrow" style="margin:8px 0 12px"><button class="btn acc ai-btn ai-suggest-area" data-alan="${esc(a)}" type="button">✨ Seçenek öner</button></div>
+      ${["neden", "sorun", "baglam"].map(f => `
+        <div class="ai-chip-block" data-alan="${esc(a)}" data-field="${f}" style="margin-bottom:10px">
+          <label class="f">${FIELD_LABEL[f]}</label>
+          <div class="ai-chips"></div>
+        </div>`).join("")}
+    `;
     wrap.appendChild(card);
   });
-  wrap.querySelectorAll("textarea").forEach(ta => ta.addEventListener("input", () => {
+  wrap.querySelectorAll('textarea[data-f="not"]').forEach(ta => ta.addEventListener("input", () => {
     const det = data["s1.detay"] || {}; det[ta.dataset.alan] = det[ta.dataset.alan] || {};
-    det[ta.dataset.alan][ta.dataset.f] = ta.value; data["s1.detay"] = det; queueSave();
+    det[ta.dataset.alan].not = ta.value; data["s1.detay"] = det; queueSave();
   }));
+  wrap.querySelectorAll(".ai-suggest-area").forEach(btn => btn.onclick = () => suggestAreaOptions(btn.dataset.alan));
+  alanlar.forEach(a => renderChipsForArea(a));
+}
+
+function renderChipsForArea(alan) {
+  const oneriler = (data["s1.oneriler"] || {})[alan] || {};
+  const detay = (data["s1.detay"] || {})[alan] || {};
+  ["neden", "sorun", "baglam"].forEach(field => {
+    const block = document.querySelector(`.ai-chip-block[data-alan="${CSS.escape(alan)}"][data-field="${field}"] .ai-chips`);
+    if (!block) return;
+    const opts = oneriler[field] || [];
+    const selected = detay[field + "Sel"] || [];
+    if (!opts.length) { block.innerHTML = '<span class="chip-wait">Henüz öneri yok — yukarıdaki "Seçenek öner" düğmesine basın.</span>'; return; }
+    block.innerHTML = opts.map(o => `<button type="button" class="chip${selected.includes(o) ? " active" : ""}" data-alan="${esc(alan)}" data-field="${field}" data-opt="${esc(o)}">${esc(o)}</button>`).join("");
+    block.querySelectorAll(".chip").forEach(chip => chip.onclick = () => toggleChip(alan, field, chip.dataset.opt));
+  });
+}
+
+function toggleChip(alan, field, opt) {
+  const det = data["s1.detay"] || {}; det[alan] = det[alan] || {};
+  let sel = det[alan][field + "Sel"] || [];
+  sel = sel.includes(opt) ? sel.filter(x => x !== opt) : [...sel, opt];
+  det[alan][field + "Sel"] = sel;
+  det[alan][field] = sel.join("; ");
+  data["s1.detay"] = det;
+  renderChipsForArea(alan);
+  queueSave();
+}
+
+async function suggestAreaOptions(alan) {
+  const btn = document.querySelector(`.ai-suggest-area[data-alan="${CSS.escape(alan)}"]`);
+  if (btn) { btn.disabled = true; btn.textContent = "Öneriler hazırlanıyor…"; }
+  try {
+    const not = ((data["s1.detay"] || {})[alan] || {}).not || "";
+    const prompt = `Sen bir akademik araştırma danışmanısın. Bir doktora öğrencisi "${alan}" alanını seçti${not ? ` ve şu notu yazdı: "${not}"` : ""}. Aşağıdaki üç soru için, öğrencinin tıklayıp seçebileceği, her biri en fazla 8 kelimelik, somut ve birbirinden farklı 5'er kısa seçenek üret. Sadece şu JSON formatında yanıt ver, başka açıklama ekleme: {"neden":["...","...","...","...","..."],"sorun":["...","...","...","...","..."],"baglam":["...","...","...","...","..."]}
+
+Sorular:
+1. neden: Bu alan öğrencinin neden ilgisini çekiyor olabilir?
+2. sorun: Bu alanda fark edilebilecek ilk somut sorun ne olabilir?
+3. baglam: Bu alan hangi bağlamlarda (hedef grup, ortam, kurum) çalışılabilir?`;
+    const raw = await callGemini(prompt);
+    const obj = extractJson(raw);
+    if (obj) {
+      const oneriler = data["s1.oneriler"] || {};
+      oneriler[alan] = obj;
+      data["s1.oneriler"] = oneriler;
+      queueSave();
+      renderChipsForArea(alan);
+    }
+  } catch (err) {
+    alert("Öneri alınamadı: " + err.message);
+  } finally {
+    if (btn) { btn.disabled = false; btn.textContent = "✨ Seçenek öner"; }
+  }
 }
 
 $("#komboBtn").onclick = () => {
