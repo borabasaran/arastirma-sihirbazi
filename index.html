@@ -300,7 +300,12 @@ const OPENALEX_MAILTO = "bbasaran@anadolu.edu.tr";
 
 // ---- Gemini (yapay zekâ) desteği ----
 let GEMINI_API_KEY = null; // Firestore'daki config/app.geminiKey'den okunur (koda gömülmez)
-const GEMINI_MODEL = "gemini-2.5-flash";
+// Google modelleri sık sık kullanımdan kaldırıyor (gemini-2.0-flash, sonra
+// gemini-2.5-flash...). "gemini-flash-latest" Google'ın otomatik güncellenen
+// takma adı — her zaman o anki güncel modele işaret eder, bakım gerektirmez.
+// Yine de bir gün 404 verirse diye elle bir yedek liste de tutuyoruz.
+const GEMINI_MODEL_CANDIDATES = ["gemini-flash-latest", "gemini-2.5-flash", "gemini-2.5-flash-lite", "gemini-pro-latest"];
+let GEMINI_MODEL_WORKING = null; // ilk başarılı modeli hatırla, tekrar tekrar denemeyelim
 let aiBusyCount = 0;
 function aiBusy(on) {
   aiBusyCount += on ? 1 : -1;
@@ -332,23 +337,45 @@ async function ensureGeminiKey() {
   } catch (e) { /* sessiz */ }
   return GEMINI_API_KEY;
 }
+async function callGeminiOnce(prompt, model) {
+  const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${GEMINI_API_KEY}`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ contents: [{ parts: [{ text: prompt }] }] })
+  });
+  if (!res.ok) {
+    const errText = await res.text().catch(() => "");
+    const err = new Error("Gemini hatası (" + res.status + ") " + errText.slice(0, 200));
+    err.status = res.status;
+    throw err;
+  }
+  const json = await res.json();
+  return (json.candidates?.[0]?.content?.parts || []).map(p => p.text || "").join("").trim();
+}
+
 async function callGemini(prompt) {
   await ensureGeminiKey();
   if (!GEMINI_API_KEY) throw new Error("Gemini API anahtarı bulunamadı. /ayarlar.html sayfasından anahtarı kaydedip bu sayfayı yenileyin (F5).");
   aiBusy(true);
   try {
-    const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${GEMINI_MODEL}:generateContent?key=${GEMINI_API_KEY}`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ contents: [{ parts: [{ text: prompt }] }] })
-    });
-    if (!res.ok) {
-      const errText = await res.text().catch(() => "");
-      throw new Error("Gemini hatası (" + res.status + ") " + errText.slice(0, 200));
+    // Daha önce çalıştığı doğrulanmış bir model varsa doğrudan onu dene
+    if (GEMINI_MODEL_WORKING) {
+      try { return await callGeminiOnce(prompt, GEMINI_MODEL_WORKING); }
+      catch (e) { if (e.status !== 404) throw e; GEMINI_MODEL_WORKING = null; /* model kalkmış olabilir, listeye düş */ }
     }
-    const json = await res.json();
-    const text = (json.candidates?.[0]?.content?.parts || []).map(p => p.text || "").join("");
-    return text.trim();
+    // Sırayla adayları dene; 404 (model artık yok) alırsa bir sonrakine geç
+    let lastErr = null;
+    for (const model of GEMINI_MODEL_CANDIDATES) {
+      try {
+        const result = await callGeminiOnce(prompt, model);
+        GEMINI_MODEL_WORKING = model; // bu model çalıştı, sonraki seferler için hatırla
+        return result;
+      } catch (e) {
+        lastErr = e;
+        if (e.status !== 404) throw e; // 404 dışındaki hatalarda (kota, yetki vb.) hemen durup göster
+      }
+    }
+    throw lastErr || new Error("Hiçbir Gemini modeli yanıt vermedi.");
   } finally {
     aiBusy(false);
   }
