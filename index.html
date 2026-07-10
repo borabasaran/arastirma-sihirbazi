@@ -72,6 +72,7 @@
         <div class="card"><h3>Veri türü</h3><div class="checks" id="veriChecks"></div></div>
         <div class="card">
           <h3>Daraltılmış konu cümlem</h3>
+          <div class="btnrow" style="margin-top:0;margin-bottom:10px"><button class="btn acc ai-btn" id="aiCumleBtn" type="button">✨ Cümleyi öner</button></div>
           <p class="hint">Bu cümle sonraki tüm aşamaların temelidir — boş bırakırsanız ilerleyebilirsiniz ama anahtar kelime üretimi ve özet aşamaları eksik kalır. En azından kabaca doldurmanız önerilir.</p>
           <textarea data-k="s2.konuCumlesi" placeholder="Geniş alan + hedef grup + odak + veri = daraltılmış konu cümlesi"></textarea>
         </div>
@@ -82,6 +83,7 @@
         <h1>Gözlemden araştırma problemine geç</h1>
         <p class="hint" style="margin-top:-8px">Burada hedeflenen: yukarıda verdiğiniz kısa yanıtları, akademik bir "araştırma problemi" paragrafına dönüştürmek. Önce soruları tek tek yanıtlayın; alttaki paragraf kutusuna, o yanıtları birleştirip kalıba oturtarak yazın — otomatik doldurma yoktur, ama yanıtlarınız zaten taslağın malzemesidir.</p>
         <div class="card">
+          <div class="btnrow" style="margin-top:0;margin-bottom:10px"><button class="btn acc ai-btn" id="aiProblemBtn" type="button">✨ Yanıtları taslak olarak öner</button></div>
           <label class="f">Ne fark ettim?</label><textarea data-k="s3.fark"></textarea>
           <label class="f">Bu durum neden önemli?</label><textarea data-k="s3.onem"></textarea>
           <label class="f">Bu durum kimleri ilgilendiriyor?</label><textarea data-k="s3.kim"></textarea>
@@ -143,7 +145,8 @@
         </div>
         <div class="card">
           <h3>Okuma sonrası kontrol</h3>
-          <p class="hint">Yukarıdaki notlarınıza bakarak bu alanları elle doldurun. (Bu adımı yapay zekâ desteğiyle otomatikleştirme özelliği yakında eklenecek.)</p>
+          <p class="hint">Yukarıdaki notlarınıza bakarak bu alanları elle doldurun, ya da aşağıdaki düğmeyle yapay zekâdan öneri isteyin.</p>
+          <div class="btnrow" style="margin-top:0;margin-bottom:10px"><button class="btn acc ai-btn" id="aiOkumaBtn" type="button">✨ Yanıtları öner</button></div>
           <input data-k="s5.yontemNotu" placeholder="Anket / görüşme / deneysel / doküman analizi / karma ...">
           <label class="f">En sık çalışılan hedef grup kim?</label>
           <input data-k="s5.grupNotu">
@@ -204,6 +207,7 @@
           <select data-k="s8.yontem" id="yontemSelect"></select>
           <label class="f">Veri kaynağı</label>
           <input data-k="s8.veriKaynagi">
+          <div class="btnrow" style="margin:0 0 4px"><button class="btn acc ai-btn" id="aiYontemBtn" type="button">✨ Veri kaynağı ve gerekçe öner</button></div>
           <label class="f">Neden uygun?</label>
           <textarea data-k="s8.gerekce"></textarea>
         </div>
@@ -224,6 +228,7 @@
             <div><label class="f">Toplama aracı</label><input data-k="s9.arac"></div>
             <div><label class="f">Etik izin gerekiyor mu? Süreç?</label><input data-k="s9.etik"></div>
           </div>
+          <div class="btnrow" style="margin:6px 0 4px"><button class="btn acc ai-btn" id="aiYapilabilirlikBtn" type="button">✨ Değerlendirme öner</button></div>
           <label class="f">Yapılabilirlik değerlendirmem</label>
           <textarea data-k="s9.degerlendirme"></textarea>
         </div>
@@ -235,6 +240,7 @@
         <p class="hint" style="margin-top:-8px">Burada hedeflenen: büyük veri toplamaya başlamadan önce fikrin küçük ölçekte işleyip işlemediğini görmek.</p>
         <div class="card"><h3>Ön araştırma türüm</h3><div class="checks" id="pilotChecks"></div></div>
         <div class="card">
+          <div class="btnrow" style="margin:0 0 4px"><button class="btn acc ai-btn" id="aiPilotBtn" type="button">✨ Deneme fikri öner</button></div>
           <label class="f">Ne denedim / deneyeceğim?</label><textarea data-k="s10.deneme"></textarea>
           <label class="f">Hangi veriyle?</label><textarea data-k="s10.veri" style="min-height:48px"></textarea>
           <label class="f">Ne fark ettim?</label><textarea data-k="s10.gozlem"></textarea>
@@ -268,6 +274,7 @@
           <label class="f">Yöntem ve gerekçesi</label><textarea data-k="s11.yontem" style="min-height:48px"></textarea>
           <label class="f">Veri kaynağı</label><textarea data-k="s11.veriKaynagi" style="min-height:48px"></textarea>
           <label class="f">Ön araştırmadan çıkan not</label><textarea data-k="s11.pilotNotu" style="min-height:48px"></textarea>
+          <div class="btnrow" style="margin:6px 0 4px"><button class="btn acc ai-btn" id="aiKatkiBtn" type="button">✨ Amaç ve beklenen katkıyı öner</button></div>
           <label class="f">Beklenen katkı</label><textarea data-k="s11.katki"></textarea>
           <label class="f">İlk kaynakça (her satıra bir kaynak)</label><textarea data-k="s11.kaynakca" style="min-height:110px"></textarea>
         </div>
@@ -950,6 +957,160 @@ Araştırma boşluğu: ${data["s6.paragraf"] || "—"}`;
   } finally {
     btn.disabled = false;
   }
+};
+
+// ------------------------------------------------------------
+// Diğer aşamalar için ortak AI doldurma yardımcıları
+// ------------------------------------------------------------
+async function aiFillJsonFields(btn, checkKeys, promptText, fieldMap) {
+  const filled = checkKeys.some(k => (data[k] || "").trim());
+  if (filled && !confirm("Mevcut yanıtların üzerine yazılacak. Devam edilsin mi?")) return;
+  const orig = btn.textContent;
+  btn.disabled = true; btn.textContent = "Hazırlanıyor…";
+  try {
+    const raw = await callGemini(promptText);
+    const obj = extractJson(raw);
+    if (obj) {
+      Object.entries(fieldMap).forEach(([jsonKey, dataKey]) => {
+        if (obj[jsonKey]) {
+          const el = document.querySelector(`[data-k="${dataKey}"]`);
+          if (el) el.value = obj[jsonKey];
+          data[dataKey] = obj[jsonKey];
+        }
+      });
+      queueSave();
+    } else {
+      alert("Yapay zekâdan geçerli bir yanıt alınamadı, tekrar deneyin.");
+    }
+  } catch (err) {
+    alert("Öneri alınamadı: " + err.message);
+  } finally {
+    btn.disabled = false; btn.textContent = orig;
+  }
+}
+async function aiFillText(btn, checkKey, dataKey, promptText) {
+  const filled = (data[checkKey] || "").trim();
+  if (filled && !confirm("Mevcut metin üzerine yazılacak. Devam edilsin mi?")) return;
+  const orig = btn.textContent;
+  btn.disabled = true; btn.textContent = "Hazırlanıyor…";
+  try {
+    const raw = await callGemini(promptText);
+    if (raw) {
+      const el = document.querySelector(`[data-k="${dataKey}"]`);
+      if (el) el.value = raw;
+      data[dataKey] = raw;
+      queueSave();
+    }
+  } catch (err) {
+    alert("Öneri alınamadı: " + err.message);
+  } finally {
+    btn.disabled = false; btn.textContent = orig;
+  }
+}
+
+// ------------------------------------------------------------
+// AŞAMA 2: daraltılmış konu cümlesi önerisi
+// ------------------------------------------------------------
+$("#aiCumleBtn").onclick = () => {
+  const prompt = `Sen bir akademik araştırma danışmanısın. Aşağıdaki seçimlere dayanarak "geniş alan + hedef grup + odak + veri" mantığıyla TEK bir Türkçe "daraltılmış konu cümlesi" öner (tek cümle, akademik dil). Sadece cümleyi yaz, başka açıklama, tırnak işareti ekleme.
+
+Seçilen alan(lar): ${(data["s1.alanlar"] || []).join(", ") || "—"}
+Hedef grup: ${(data["s2.hedef"] || []).join(", ") || "—"}
+Beceri/odak: ${(data["s2.beceri"] || []).join(", ") || "—"}
+Araç: ${(data["s2.arac"] || []).join(", ") || "—"}
+Bağlam: ${(data["s2.baglam"] || []).join(", ") || "—"}
+Veri türü: ${(data["s2.veri"] || []).join(", ") || "—"}`;
+  aiFillText($("#aiCumleBtn"), "s2.konuCumlesi", "s2.konuCumlesi", prompt);
+};
+
+// ------------------------------------------------------------
+// AŞAMA 3: gözlemden probleme taslak önerisi
+// ------------------------------------------------------------
+$("#aiProblemBtn").onclick = () => {
+  const prompt = `Sen bir akademik araştırma danışmanısın. Aşağıdaki bağlama dayanarak, bir doktora öğrencisinin aşağıdaki beş soruya vereceği kısa Türkçe taslak yanıtları VE bunları birleştiren bir "problem paragrafı" öner. Paragraf kalıbı: "Mevcut durumda ... görülmektedir. Ancak ... konusunda yeterli bilgi bulunmamaktadır. Bu nedenle ... konusunun incelenmesi önem taşımaktadır." Sadece şu JSON formatında yanıt ver, başka açıklama ekleme: {"fark":"...","onem":"...","kim":"...","veri":"...","katki":"...","paragraf":"..."}
+
+Seçilen alan(lar): ${(data["s1.alanlar"] || []).join(", ") || "—"}
+Daraltılmış konu cümlesi: ${data["s2.konuCumlesi"] || "—"}`;
+  aiFillJsonFields($("#aiProblemBtn"), ["s3.paragraf"], prompt, {
+    fark: "s3.fark", onem: "s3.onem", kim: "s3.kim", veri: "s3.veri", katki: "s3.katki", paragraf: "s3.paragraf"
+  });
+};
+
+// ------------------------------------------------------------
+// AŞAMA 5: okuma sonrası kontrol önerisi
+// ------------------------------------------------------------
+$("#aiOkumaBtn").onclick = () => {
+  const notlar = (data["s5.kaynaklar"] || []).map(r => `- ${r.kaynak}: amaç: ${r.amac || "—"}; yöntem: ${r.yontem || "—"}; bulgu: ${r.bulgu || "—"}; anlamı: ${r.anlam || "—"}`).join("\n");
+  const prompt = `Sen bir akademik araştırma danışmanısın. Aşağıdaki literatür notlarına dayanarak üç kısa Türkçe yanıt öner. Sadece şu JSON formatında yanıt ver, başka açıklama ekleme: {"yontemNotu":"...","grupNotu":"...","eksikNotu":"..."}
+
+Sorular:
+1. yontemNotu: Bu çalışmalarda en sık kullanılan yöntem/veri türü nedir? (kısa ifade)
+2. grupNotu: En sık çalışılan hedef grup kimdir? (kısa ifade)
+3. eksikNotu: Bu çalışmalarda eksik kalan yön ne olabilir? (1-2 cümle)
+
+Literatür notları:
+${notlar || "—"}`;
+  aiFillJsonFields($("#aiOkumaBtn"), ["s5.yontemNotu"], prompt, {
+    yontemNotu: "s5.yontemNotu", grupNotu: "s5.grupNotu", eksikNotu: "s5.eksikNotu"
+  });
+};
+
+// ------------------------------------------------------------
+// AŞAMA 8: veri kaynağı ve gerekçe önerisi
+// ------------------------------------------------------------
+$("#aiYontemBtn").onclick = () => {
+  const prompt = `Sen bir akademik araştırma danışmanısın. Aşağıdaki bilgilere dayanarak kısa bir "veri kaynağı" tanımı ve bu yöntemin neden uygun olduğuna dair kısa bir gerekçe öner (Türkçe, akademik dil). Sadece şu JSON formatında yanıt ver, başka açıklama ekleme: {"veriKaynagi":"...","gerekce":"..."}
+
+Sorumun tipi: ${data["s8.tip"] || "—"}
+Seçtiğim yöntem: ${data["s8.yontem"] || "—"}
+Daraltılmış konu: ${data["s2.konuCumlesi"] || "—"}
+Hedef grup: ${(data["s2.hedef"] || []).join(", ") || "—"}`;
+  aiFillJsonFields($("#aiYontemBtn"), ["s8.gerekce"], prompt, {
+    veriKaynagi: "s8.veriKaynagi", gerekce: "s8.gerekce"
+  });
+};
+
+// ------------------------------------------------------------
+// AŞAMA 9: yapılabilirlik değerlendirmesi önerisi
+// ------------------------------------------------------------
+$("#aiYapilabilirlikBtn").onclick = () => {
+  const prompt = `Sen bir akademik araştırma danışmanısın. Aşağıdaki bilgilere dayanarak yapılabilirlik planlaması için kısa Türkçe öneriler ver. Bunlar gerçek veri değil, öğrencinin başlangıç noktası olarak düzenleyebileceği makul varsayımlardır. Sadece şu JSON formatında yanıt ver, başka açıklama ekleme: {"kimden":"...","sayi":"...","sure":"...","arac":"...","etik":"...","degerlendirme":"..."}
+
+Yöntem: ${data["s8.yontem"] || "—"}
+Veri kaynağı: ${data["s8.veriKaynagi"] || "—"}
+Hedef grup: ${(data["s2.hedef"] || []).join(", ") || "—"}
+Daraltılmış konu: ${data["s2.konuCumlesi"] || "—"}`;
+  aiFillJsonFields($("#aiYapilabilirlikBtn"), ["s9.degerlendirme"], prompt, {
+    kimden: "s9.kimden", sayi: "s9.sayi", sure: "s9.sure", arac: "s9.arac", etik: "s9.etik", degerlendirme: "s9.degerlendirme"
+  });
+};
+
+// ------------------------------------------------------------
+// AŞAMA 10: pilot deneme fikri önerisi
+// ------------------------------------------------------------
+$("#aiPilotBtn").onclick = () => {
+  const prompt = `Sen bir akademik araştırma danışmanısın. Aşağıdaki bilgilere dayanarak, öğrencinin büyük veri toplamadan önce deneyebileceği küçük ölçekli bir ön deneme (pilot) fikri öner (2-3 cümle, Türkçe, somut ve uygulanabilir). Bu bir plan önerisidir, sonuç uydurma. Sadece öneri metnini yaz, başka açıklama ekleme.
+
+Ön araştırma türü: ${(data["s10.tur"] || []).join(", ") || "—"}
+Yöntem: ${data["s8.yontem"] || "—"}
+Veri kaynağı: ${data["s8.veriKaynagi"] || data["s9.veri"] || "—"}
+Daraltılmış konu: ${data["s2.konuCumlesi"] || "—"}`;
+  aiFillText($("#aiPilotBtn"), "s10.deneme", "s10.deneme", prompt);
+};
+
+// ------------------------------------------------------------
+// AŞAMA 11: amaç ve beklenen katkı önerisi
+// ------------------------------------------------------------
+$("#aiKatkiBtn").onclick = () => {
+  const prompt = `Sen bir akademik araştırma danışmanısın. Aşağıdaki bilgilere dayanarak çalışmanın "amacı" ve "beklenen katkısı" için kısa Türkçe metinler öner (her biri 1-2 cümle, akademik dil). Sadece şu JSON formatında yanıt ver, başka açıklama ekleme: {"amac":"...","katki":"..."}
+
+Daraltılmış konu: ${data["s2.konuCumlesi"] || "—"}
+Problem: ${data["s3.paragraf"] || "—"}
+Araştırma boşluğu: ${data["s6.paragraf"] || "—"}
+Ana araştırma sorusu: ${data["s7.ana"] || "—"}`;
+  aiFillJsonFields($("#aiKatkiBtn"), ["s11.katki"], prompt, {
+    amac: "s11.amac", katki: "s11.katki"
+  });
 };
 
 function restoreInputs() {
