@@ -27,7 +27,36 @@
     <span id="saveState" class="savestate">—</span>
     <span id="aiStatus" class="savestate" hidden style="background:rgba(247,212,7,.35)"><span class="ai-spin"></span>ArSi çalışıyor…</span>
     <span class="who" id="whoAmI"></span>
+    <button class="btn sm ghost" style="border-color:#fff;color:#fff" id="myApiKeyBtn">🔑 Kendi API Anahtarım</button>
     <button class="btn sm ghost" style="border-color:#fff;color:#fff" id="logoutBtn">Çıkış</button>
+  </div>
+
+  <div class="modal-bg" id="apiKeyModalBg">
+    <div class="modal" style="max-width:640px">
+      <button class="btn sm ghost close" id="apiKeyModalClose">Kapat ✕</button>
+      <h2>Kendi Gemini API Anahtarınız</h2>
+      <p class="hint">Bu sihirbaz, önerileri üretmek için Google'ın Gemini yapay zekâsını kullanıyor. Herkes aynı ortak anahtarı kullanırsa, yoğun saatlerde geçici yavaşlamalar olabilir. <b>Kendi ücretsiz anahtarınızı</b> girerseniz, önerileriniz sadece sizin kotanızı kullanır ve başkalarından etkilenmezsiniz. Bu tamamen isteğe bağlıdır — boş bırakırsanız ortak anahtar kullanılmaya devam eder.</p>
+
+      <div class="card" style="margin:16px 0">
+        <h3>Ücretsiz anahtarı nasıl alırım? (2 dakika)</h3>
+        <ol style="margin:0;padding-left:20px;font-size:.88rem;line-height:1.8">
+          <li><a href="https://aistudio.google.com/apikey" target="_blank" rel="noopener"><b>aistudio.google.com/apikey</b></a> adresine gidin (Google/Gmail hesabınızla giriş yapın).</li>
+          <li><b>"Create API key"</b> (API anahtarı oluştur) düğmesine tıklayın.</li>
+          <li>Çıkan pencerede yeni bir proje oluşturmasına izin verin (veya mevcut bir proje seçin).</li>
+          <li>Oluşturulan anahtarı (<code>AIza…</code> veya <code>AQ…</code> ile başlar) <b>kopyalayın</b>.</li>
+          <li>Aşağıdaki kutuya yapıştırıp <b>Kaydet</b>'e basın.</li>
+        </ol>
+        <p class="hint" style="margin-top:10px">Bu anahtar tamamen ücretsizdir, kredi kartı istemez. Google'ın ücretsiz katmanı günde yüzlerce istek hakkı tanır — tek kişi için fazlasıyla yeterlidir.</p>
+      </div>
+
+      <label class="f">API anahtarınız</label>
+      <input type="text" id="myApiKeyInput" placeholder="AIza… veya AQ… ile başlayan anahtarınızı buraya yapıştırın">
+      <div class="btnrow">
+        <button class="btn acc" id="myApiKeySave" type="button">Kaydet</button>
+        <button class="btn ghost" id="myApiKeyClear" type="button">Anahtarımı sil (ortak anahtara dön)</button>
+      </div>
+      <p id="myApiKeyStatus" class="hint" style="margin-top:10px"></p>
+    </div>
   </div>
 
   <div class="layout">
@@ -332,6 +361,14 @@ function showAiError(msg) {
     el.style.background = "rgba(247,212,7,.35)";
   }, 7000);
 }
+let USING_PERSONAL_KEY = false; // true ise Firestore'daki ortak anahtar asla üzerine yazmaz
+const PERSONAL_KEY_STORAGE = "arsi_gemini_personal_key";
+function loadPersonalGeminiKey() {
+  try {
+    const k = localStorage.getItem(PERSONAL_KEY_STORAGE);
+    if (k && k.trim()) { GEMINI_API_KEY = k.trim(); USING_PERSONAL_KEY = true; }
+  } catch (e) { /* sessiz */ }
+}
 async function ensureGeminiKey() {
   if (GEMINI_API_KEY) return GEMINI_API_KEY;
   try {
@@ -528,6 +565,47 @@ $("#logoutBtn").onclick = () => {
   location.reload();
 };
 
+// ------------------------------------------------------------
+// Kişisel Gemini API anahtarı modalı
+// ------------------------------------------------------------
+function updateMyApiKeyStatus() {
+  const st = $("#myApiKeyStatus");
+  if (!st) return;
+  if (USING_PERSONAL_KEY) {
+    st.innerHTML = "✓ Kendi anahtarınız aktif — öneriler sadece sizin kotanızı kullanıyor.";
+    st.style.color = "var(--ok)";
+  } else {
+    st.innerHTML = "Şu anda ortak (paylaşılan) anahtar kullanılıyor.";
+    st.style.color = "";
+  }
+}
+$("#myApiKeyBtn").onclick = () => {
+  $("#myApiKeyInput").value = USING_PERSONAL_KEY ? (localStorage.getItem(PERSONAL_KEY_STORAGE) || "") : "";
+  updateMyApiKeyStatus();
+  $("#apiKeyModalBg").classList.add("open");
+};
+$("#apiKeyModalClose").onclick = () => $("#apiKeyModalBg").classList.remove("open");
+$("#apiKeyModalBg").onclick = (e) => { if (e.target.id === "apiKeyModalBg") $("#apiKeyModalBg").classList.remove("open"); };
+$("#myApiKeySave").onclick = () => {
+  const v = $("#myApiKeyInput").value.trim();
+  if (!v) { alert("Lütfen önce bir anahtar yapıştırın."); return; }
+  localStorage.setItem(PERSONAL_KEY_STORAGE, v);
+  GEMINI_API_KEY = v;
+  USING_PERSONAL_KEY = true;
+  GEMINI_MODEL_WORKING = null; // yeni anahtarla hangi modelin çalıştığını baştan öğren
+  updateMyApiKeyStatus();
+  alert("Kaydedildi! Artık öneriler kendi anahtarınızla çalışacak.");
+};
+$("#myApiKeyClear").onclick = () => {
+  if (!confirm("Kendi anahtarınızı silip ortak anahtara dönmek istiyor musunuz?")) return;
+  localStorage.removeItem(PERSONAL_KEY_STORAGE);
+  USING_PERSONAL_KEY = false;
+  GEMINI_API_KEY = null;
+  GEMINI_MODEL_WORKING = null;
+  $("#myApiKeyInput").value = "";
+  updateMyApiKeyStatus();
+};
+
 (function boot() {
   let savedUid = localStorage.getItem("arsi_uid");
   let savedProfile = localStorage.getItem("arsi_profile");
@@ -539,6 +617,7 @@ $("#logoutBtn").onclick = () => {
   }
   uid = savedUid;
   try { profile = JSON.parse(savedProfile); } catch (e) { profile = { ad: "", soyad: "", program: "" }; }
+  loadPersonalGeminiKey();
   startApp();
 })();
 
@@ -563,7 +642,7 @@ async function startApp() {
         OPT = { ...DEFAULT_OPTIONS, ...cfg.options };
         buildDynamicUI(); restoreInputs();
       }
-      if (cfg && cfg.geminiKey) {
+      if (cfg && cfg.geminiKey && !USING_PERSONAL_KEY) {
         GEMINI_API_KEY = cfg.geminiKey;
       }
     })
